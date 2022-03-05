@@ -1,0 +1,20 @@
+package:
+  name: naclo
+  version: "0.0.3"
+
+source:
+  git_url: https://github.com/jwgerlach00/naclo
+
+requirements:
+  channels:
+    - conda-forge
+  build:
+    - python
+    - setuptools
+  run:
+    - python
+    - conda-forge::rdkit
+    - openpyxl
+
+about:
+  home:
