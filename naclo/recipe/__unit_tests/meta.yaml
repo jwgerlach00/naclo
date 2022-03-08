@@ -1,7 +1,0 @@
-name: naclo
-channels:
-  - defaults
-dependencies:
-  - rdkit
-  - openpyxl
-prefix: /Users/collabpharma/opt/anaconda3/envs/naclo

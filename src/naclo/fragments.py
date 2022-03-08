@@ -1,6 +1,6 @@
 from rdkit import Chem
 from rdkit.Chem.Descriptors import ExactMolWt
-import mol_stats as mol_stats
+import naclo.mol_stats
 from rdkit.Chem.SaltRemover import SaltRemover
 
 
