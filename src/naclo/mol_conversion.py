@@ -1,6 +1,7 @@
 from rdkit import Chem
 
 
+# class Conversion:
 def mols_2_smiles(mols):  # *
     """Generates SMILES strings from list of rdkit Mol objects.
 

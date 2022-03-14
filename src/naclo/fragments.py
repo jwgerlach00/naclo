@@ -1,6 +1,6 @@
 from rdkit import Chem
 from rdkit.Chem.Descriptors import ExactMolWt
-import naclo.mol_stats
+from naclo import mol_stats
 from rdkit.Chem.SaltRemover import SaltRemover
 
 
@@ -65,16 +65,15 @@ class FragRemover():
         
         return fragments[max_index]
 
+    def remove_salts(self, mols, salts='[Cl,Br]'):  # *
+        """Removes salts from iterable.
 
-def remove_salts(mols, salts='[Cl,Br]'):  # *
-    """Removes salts from iterable.
+        Args:
+            mols (iterable): Contains RDKit Mol objects.
 
-    Args:
-        mols (iterable): Contains RDKit Mol objects.
-
-    Returns:
-        list: Contains RDKit Mol objects with salts removed.
-    """
-    remover = SaltRemover(defnData=salts)
-        
-    return [remover.StripMol(mol) for mol in mols]
+        Returns:
+            list: Contains RDKit Mol objects with salts removed.
+        """
+        remover = SaltRemover(defnData=salts)
+            
+        return [remover.StripMol(mol) for mol in mols]
