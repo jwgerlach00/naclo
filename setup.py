@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='naclo',
-    version='0.1.4',
+    version='0.1.5',
     license='MIT',
     author='Jacob Gerlach',
     author_email='jwgerlach00@gmail.com',

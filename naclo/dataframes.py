@@ -18,7 +18,7 @@ def df_smiles_2_mols(df, smiles_name, mol_name, dropna=True):  # *
     df[mol_name] = df[smiles_name].map(Chem.MolFromSmiles, na_action='ignore')  # Results in NA el if fails
     return df.dropna(subset=[mol_name]) if dropna else df
 
-def df_mols_2_inchis(df, mol_name, inchi_name, dropna=True):  # *
+def df_mols_2_inchi_keys(df, mol_name, inchi_name, dropna=True):  # *
     """Adds InChi Key column to df using Mol column as reference.
     
     Args:
