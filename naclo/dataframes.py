@@ -3,7 +3,7 @@ from warnings import warn
 from rdkit.Chem import PandasTools
 
 
-def smiles_to_mols(df, smiles_name, mol_name, dropna=True):  # *
+def df_smiles_2_mols(df, smiles_name, mol_name, dropna=True):  # *
     """Adds rdkit Mol column to df using SMILES column as reference.
 
     Args:
@@ -18,7 +18,7 @@ def smiles_to_mols(df, smiles_name, mol_name, dropna=True):  # *
     df[mol_name] = df[smiles_name].map(Chem.MolFromSmiles, na_action='ignore')  # Results in NA el if fails
     return df.dropna(subset=[mol_name]) if dropna else df
 
-def mols_to_inchis(df, mol_name, inchi_name, dropna=True):  # *
+def df_mols_2_inchis(df, mol_name, inchi_name, dropna=True):  # *
     """Adds InChi Key column to df using Mol column as reference.
     
     Args:
@@ -33,7 +33,7 @@ def mols_to_inchis(df, mol_name, inchi_name, dropna=True):  # *
     df[inchi_name] = df[mol_name].map(Chem.MolToInchiKey, na_action='ignore')  # Results in NA el if fails
     return df.dropna(subset=[inchi_name]) if dropna else df
     
-def mols_to_smiles(df, mol_name, smiles_name, dropna=True):  # *
+def df_mols_2_smiles(df, mol_name, smiles_name, dropna=True):  # *
     """Adds SMILES Key column to df using Mol column as reference.
 
     Args:
