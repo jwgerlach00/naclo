@@ -1,6 +1,8 @@
-# from naclo.mol_stats import mol_weights, carbon_num
-# from naclo.mol_conversion import *
-# from naclo.fragments import FragRemover
+__doc__ == """
+**naclo** is a Python cleaning toolset for small molecule drug discovery datasets.
+"""
+
+
 from naclo.mol_stats import *
 from naclo.mol_conversion import *
 from naclo import fragments
