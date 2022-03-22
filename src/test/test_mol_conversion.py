@@ -43,6 +43,16 @@ class TestMolConversion(unittest.TestCase):
             mol_conversion.smiles_2_inchi_keys(self.excel_smiles)
         )
 
+    def test_mols_2_ecfp(self):
+        ecfp = mol_conversion.mols_2_ecfp(self.sdf_mols)
+        print(ecfp)
+        for i in ecfp:
+            print(len(i))
+            print(sum(i))
+        
+    def test_mols_2_maccs(self):
+        mol_conversion.mols_2_maccs(self.sdf_mols)
+
 
 if __name__ == '__main__':
     unittest.main()
