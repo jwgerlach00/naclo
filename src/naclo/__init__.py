@@ -8,3 +8,4 @@ from naclo.mol_conversion import *
 from naclo import fragments
 from naclo import neutralize
 from naclo import dataframes
+from naclo import visualization

@@ -48,7 +48,7 @@ def smiles_2_inchi_keys(smiles):  # *
     mols = smiles_2_mols(smiles)
     return mols_2_inchi_keys(mols)
 
-def mols_2_ecfp(mols, radius=2, return_numpy=True, n_bits=1024):
+def mols_2_ecfp(mols, radius=2, return_numpy=False, n_bits=1024):
     """Converts from rdkit mol objects to morgan fingerprints (full ECFP6).
 
     :param mols: Collection of mols

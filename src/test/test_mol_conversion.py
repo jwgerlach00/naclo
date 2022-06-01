@@ -44,7 +44,7 @@ class TestMolConversion(unittest.TestCase):
         )
 
     def test_mols_2_ecfp(self):
-        ecfp = mol_conversion.mols_2_ecfp(self.sdf_mols)
+        ecfp = mol_conversion.mols_2_ecfp(self.sdf_mols, return_numpy=True)
         print(ecfp)
         for i in ecfp:
             print(len(i))
