@@ -1,10 +1,14 @@
 setup.py
+src/naclo/Writer.py
 src/naclo/__init__.py
+src/naclo/database.py
 src/naclo/dataframes.py
 src/naclo/fragments.py
 src/naclo/mol_conversion.py
 src/naclo/mol_stats.py
 src/naclo/neutralize.py
+src/naclo/rdpickle.py
+src/naclo/visualization.py
 src/naclo.egg-info/PKG-INFO
 src/naclo.egg-info/SOURCES.txt
 src/naclo.egg-info/dependency_links.txt
@@ -16,3 +20,4 @@ src/test/test_fragments.py
 src/test/test_mol_conversion.py
 src/test/test_mol_stats.py
 src/test/test_neutralize.py
+src/test/test_visualization.py

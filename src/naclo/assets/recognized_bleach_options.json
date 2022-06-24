@@ -1,0 +1,29 @@
+{
+    "molecule_settings": {
+        "neutralize_charges": {
+            "run": [true, false]
+        },
+        "remove_fragments": {
+            "salts": "",
+            "filter_method": ["carbon_count", "mw", "atom_count"]
+        }
+    },
+
+    "file_settings": {
+        "duplicate_compounds": {
+            "selected": ["average", "remove", "keep"]
+        },
+        "append_columns": {
+            "smiles": [true, false],
+            "mol": [true, false],
+            "inchi_key": [true, false],
+            "mw": [true, false]
+        },
+        "remove_header_chars": {
+            "chars": ""
+        },
+        "remove_na_targets": {
+            "run": [true, false]
+        }
+    }
+}

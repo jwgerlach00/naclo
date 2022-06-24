@@ -1,6 +1,11 @@
 from rdkit import Chem
 from warnings import warn
 from rdkit.Chem import PandasTools
+import pandas as pd
+from typing import Union
+
+# Nested imports
+from naclo.Writer import Writer
 
 
 def df_smiles_2_mols(df, smiles_name, mol_name, dropna=True):  # *
@@ -62,3 +67,20 @@ def write_sdf(df, out_path, mol_col_name, id_column_name='RowID'):  # *
     except KeyError:
         PandasTools.WriteSDF(df, out_path, molColName=mol_col_name, properties=df.columns, idName='RowID')
         warn(f'write_sdf \'{id_column_name}\' ID name invalid', UserWarning)
+
+def id_mol_col(df:pd.DataFrame) -> Union[None, pd.Index]:
+    """Identifies first column that contains a Mol object based on first row.
+
+    Args:
+        df (pd.DataFrame): Input data.
+
+    Returns:
+        Union[None, pd.Index]: Index of first Mol column if found. Else None.
+    """
+    for i in range(len(df)):
+        df.iloc[i]
+        first_row = [isinstance(m, Chem.rdchem.Mol) for m in df.iloc[i]]
+        if sum(first_row) > 0:
+            return df.columns[first_row.index(True)]
+        
+    return None

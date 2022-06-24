@@ -1,7 +1,10 @@
+from ast import Bytes
 import unittest
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import PandasTools
+from setuptools import setup
+from io import BytesIO
 
 import naclo
 from naclo import dataframes
@@ -24,7 +27,7 @@ class TestDataframes(unittest.TestCase):
                       Chem.MolToInchiKey(Chem.MolFromSmiles('O=C(O)C1(Sc2ccnc3ccc(C4CC4)cc23)CCC1')),
                       Chem.MolToInchiKey(Chem.MolFromSmiles('CC(C)(Sc1ccncc1-c1ccc(C#N)c2ccccc12)C(=O)O')),
                       None]
-        })
+            })
         
         cls.excel_df = pd.read_excel('test/excel_test_case.xlsx')
         cls.excel_df = dataframes.df_smiles_2_mols(cls.excel_df, 'Smiles', 'Molecule')
@@ -73,3 +76,38 @@ class TestDataframes(unittest.TestCase):
         
         # Ensure original SMILES are the same
         assert load_sdf.Smiles.equals(self.sdf_df.Smiles)
+
+
+class TestDataframesWriter(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.test_df = pd.DataFrame({
+            'SMILES': ['O=C(O)C1(Sc2ccnc3ccc(Br)cc23)CCC1', 
+                       'O=C(O)C1(Sc2ccnc3ccc(C4CC4)cc23)CCC1', 
+                       'CC(C)(Sc1ccncc1-c1ccc(C#N)c2ccccc12)C(=O)O'],
+            'Molecule': [Chem.MolFromSmiles('O=C(O)C1(Sc2ccnc3ccc(Br)cc23)CCC1'),
+                         Chem.MolFromSmiles('O=C(O)C1(Sc2ccnc3ccc(C4CC4)cc23)CCC1'),
+                         Chem.MolFromSmiles('CC(C)(Sc1ccncc1-c1ccc(C#N)c2ccccc12)C(=O)O')]
+            })
+        
+        cls.writer = dataframes.Writer(df=cls.test_df, mol_col_name='Molecule')
+        return super().setUpClass()
+    
+    def test_writer_rdkit_2_excel(self):
+        # Test w/ buffer
+        # buf = BytesIO()
+        # self.writer.rdkit_2_excel(buf)
+        
+        # Test with path --> REQUIRES VISUAL CONFIRMATION
+        path = 'writer_rdkit_2_excel_test_case.xlsx'
+        self.writer.rdkit_2_excel(path)
+        
+    def test_writer_write(self):
+        buf = BytesIO()
+        for ext in ['csv', 'tsv', 'xls', 'xlsx', 'sdf']:
+            out = self.writer.write(buf, ext=ext)
+            assert isinstance(out, BytesIO)
+
+
+if __name__ == '__main__':
+    unittest.main()

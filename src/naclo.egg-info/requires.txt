@@ -1,2 +1,4 @@
-rdkit-pypi
+numpy
 pandas
+rdkit_pypi
+stse
