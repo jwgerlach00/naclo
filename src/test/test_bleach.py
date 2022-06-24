@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from naclo import Bleach
 import warnings
+from rdkit import Chem
 
 
 class TestBleach(unittest.TestCase):
@@ -176,11 +177,56 @@ class TestBleach(unittest.TestCase):
                 w.args[0],
                 'ALL_NA_TARGETS: All targets in specified column were NA, all rows dropped'
             )
-   
+            
+    def test_compute_mols(self):
+        # From SMILES
+        params = self.default_params.copy()
+        params['structure_col'] = 'SMILES'
+        params['structure_type'] = 'smiles'
         
+        bleach = Bleach(self.smiles_df, params, self.default_options)
+        bleach.drop_na()
+        bleach.compute_mols()
+
+        [self.assertIsInstance(m, Chem.rdchem.Mol) for m in bleach.df['ROMol']]
         
+        # From SMILES w/ bad Mols
+        mol_df = bleach.df.copy()
         
-    
+        new_row = pd.DataFrame({
+            'SMILES': ['CC', 'C', 'CCC'],
+            'ROMol': ['test', 1, 'CCC']
+        })
+        
+        mol_df = pd.concat((mol_df, new_row))
+        bleach = Bleach(mol_df, params, self.default_options)
+        bleach.drop_na()
+        bleach.compute_mols()
+        
+        self.assertEqual(
+            bleach.df['SMILES'].tolist(),
+            mol_df['SMILES'].tolist()
+        )
+        [self.assertIsInstance(m, Chem.rdchem.Mol) for m in bleach.df['ROMol']]
+        
+        # From Mols w/ bad Mols
+        params['structure_col'] = 'ROMol'
+        params['structure_type'] = 'mol'
+        bleach = Bleach(mol_df, params, self.default_options)
+        bleach.drop_na()
+        bleach.compute_mols()
+        print(bleach.df)
+        
+        [self.assertIsInstance(m, Chem.rdchem.Mol) for m in bleach.df['ROMol']]
+        self.assertEqual(
+            len(bleach.df),
+            5
+        )
+        self.assertEqual(
+            bleach.df['SMILES'].tolist(),
+            self.smiles_df['SMILES'].tolist()[:-1]  # Excluding blank
+        )
+
     # def test_remove_fragments(self):
     #     params = self.default_params.copy()
     #     options = self.default_options.copy()

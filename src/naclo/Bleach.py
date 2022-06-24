@@ -26,6 +26,9 @@ class Bleach:
         self.__mols = []
         self.__inchi_keys = []
         
+        self.__mol_col = ''
+        self.__smiles_col = ''
+        
         # Save input data
         self.original_df = df.copy()
         self.df = df.copy()
@@ -152,19 +155,25 @@ class Bleach:
         self.df = stse.dataframes.remove_nan_cols(self.df)  # After dropping rows because columns may BECOME empty
     
     # Step 2 
-    def compute_mols(self):
+    def compute_mols(self) -> None:
         """Computes Mols if the input doesn't contain a Mol column already, refreshes SMILES by regenerating from Mols.
         """
-        try:
-            self.__mols = self.df[self.mol_col]  # Test if mol column already exists
-            assert all([isinstance(x, Chem.rdchem.Mol) for x in self.__mols])  # Ensure the entire column is Mol
-        except KeyError:
-            self.df[self.smiles_col].dropna(inplace=True)
-            self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.smiles_col, self.mol_col)
-            
-            self.__mols = self.df[self.mol_col].tolist()
         
-        self.__smiles = naclo.mols_2_smiles(self.__mols)
+        self.__mol_col = self.structure_col if self.structure_type == 'mol' else self.__default_cols['mol']
+        self.__smiles_col = self.structure_col if self.structure_type == 'smiles' else self.__default_cols['smiles']
+        
+        if self.structure_type == 'mol':
+            self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.__mol_col, self.__smiles_col)
+            
+        elif self.structure_type == 'smiles':
+            self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.__smiles_col, self.__mol_col)
+            # Canonicalize SMILES
+            self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.__mol_col, self.__smiles_col)
+            
+        self.__mols = self.df[self.__mol_col].tolist()
+        self.__smiles = self.df[self.__smiles_col].tolist()
+        
+        
         
     # Step 3
     def mol_cleanup(self):
