@@ -296,4 +296,3 @@ class Bleach:
             bool: Truth of equality
         """
         return len(self.__mols) == len(self.__smiles) == len(self.__reference_mols) == len(self.__reference_smiles)
-

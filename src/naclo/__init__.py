@@ -11,4 +11,4 @@ from naclo import fragments
 from naclo import neutralize
 from naclo import rdpickle
 from naclo import visualization
-from naclo.bleach import Bleach
+from naclo.Bleach import Bleach
