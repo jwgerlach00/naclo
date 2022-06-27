@@ -1,12 +1,11 @@
-from distutils import errors
-from logging import warning
-from unittest import TextTestRunner
-import naclo
-import stse
-from rdkit import Chem
 import json
 import pandas as pd
 import warnings
+from typing import Callable
+
+# sourced from github.com/jwgerlach00
+import naclo
+import stse
 
 
 class Bleach:
@@ -155,10 +154,10 @@ class Bleach:
         """
         self.drop_na()  # Before init_structure bc need NA
         self.init_structure_compute()
-        self.mol_cleanup()  # Clean Mols and SMILES
-        self.handle_duplicates()  # Drop/average/keep duplicates
-        # self.append_columns()  # Add or remove columns from final output
-        # self.remove_header_chars()  # Remove characters from headers
+        self.mol_cleanup()
+        self.handle_duplicates()  # Includes InchiKey generation
+        self.append_columns()
+        self.remove_header_chars()
     
         return self.df
         
@@ -225,8 +224,8 @@ class Bleach:
         elif dup['selected'] == 'remove' or (dup['selected'] == 'average' and not self.target_col):
             self.df = stse.duplicates.remove(self.df, subsets=[self.inchi_key_col])
     
-    # Step 6
-    def append_columns(self):
+    # Step 5
+    def append_columns(self) -> None:  # *
         """Drops and adds columns depending on what the user wants returned.
 
         Args:
@@ -235,25 +234,25 @@ class Bleach:
         self.__drop_columns()
         self.__add_columns()
     
-    # Step 7
-    def remove_header_chars(self):
+    # Step 6
+    def remove_header_chars(self) -> None:  # *
         """Removes any chars listed in a string of chars from the df column headers.
         """
         chars = self.file_settings['remove_header_chars']['chars']
         self.df = stse.dataframes.remove_header_chars(self.df, chars)
     
-    def __drop_columns(self):  # Note: everything already has a Molecule column added
+    def __drop_columns(self) -> None:  # Note: everything already has a Molecule column added
         """Removes columns that the user does not want in the final output.
         """
         option = self.file_settings['append_columns']
         
         # Drop added columns from built if not requested
-        if not option['MolFile']:
-            self.df.drop(self.mol_col, inplace=True)
-        if not option['InchiKey']:
-            self.df.drop(self.inchi_keys_col, inplace=True)
-        if not option['SMILES']:
-            self.df.drop(self.smiles_col, inplace=True)
+        if not option['mol']:
+            self.df.drop(self.mol_col, inplace=True, axis=1)
+        if not option['inchi_key']:
+            self.df.drop(self.inchi_key_col, inplace=True, axis=1)
+        if not option['smiles']:
+            self.df.drop(self.smiles_col, inplace=True, axis=1)
 
     def __add_columns(self) -> None:
         """Add columns that the user wants in the final output.
@@ -267,16 +266,16 @@ class Bleach:
         option = self.file_settings['append_columns']
         
         # Add MW column
-        if option['MW']:
-            self.df.assign(MW = naclo.mol_weights(self.df[self.mol_col]))
+        if option['mw']:
+            self.df = self.df.assign(MW = naclo.mol_weights(self.df[self.mol_col]))
     
     @staticmethod
-    def __filter_fragments_factory(method):
-        if method == 'carbon_count':
+    def __filter_fragments_factory(filter:str) -> Callable:
+        if filter == 'carbon_count':
             return naclo.fragments.carbon_count
-        elif method == 'mw':
+        elif filter == 'mw':
             return naclo.fragments.mw
-        elif method == 'atom_count':
+        elif filter == 'atom_count':
             return naclo.fragments.atom_count
         else:
             raise ValueError('Filter method is not allowed')

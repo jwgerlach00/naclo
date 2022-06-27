@@ -1,10 +1,8 @@
-from multiprocessing.sharedctypes import Value
 import unittest
 import json
 import pandas as pd
 import numpy as np
 from naclo import Bleach
-import naclo
 import warnings
 from rdkit import Chem
 import copy
@@ -383,6 +381,62 @@ class TestBleach(unittest.TestCase):
         self.assertIn(
             'InchiKey',
             bleach.df.columns
+        )
+        
+    def test_append_column(self):
+        params = copy.deepcopy(self.default_params)
+        options = copy.deepcopy(self.default_options)
+        params['structure_col'] = 'SMILES'
+        params['structure_type'] = 'smiles'
+        
+        # All columns
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        bleach.handle_duplicates()
+        bleach.append_columns()
+        
+        self.assertEqual(
+            ['SMILES', 'ROMol', 'InchiKey', 'MW'],
+            list(bleach.df.columns)
+        )
+        
+        # No columns (except SMILES for testing purposes)
+        options['file_settings']['append_columns'] = {
+            'smiles': True,
+            'mol': False,
+            'inchi_key': False,
+            'mw': False
+        }
+        
+        
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        bleach.handle_duplicates()
+        bleach.append_columns()
+        
+        self.assertEqual(
+            ['SMILES'],
+            list(bleach.df.columns)
+        )
+        
+    def test_remove_header_chars(self):
+        params = copy.deepcopy(self.default_params)
+        options = copy.deepcopy(self.default_options)
+        params['structure_col'] = 'SMILES'
+        params['structure_type'] = 'smiles'
+        
+        options['file_settings']['remove_header_chars']['chars'] = 'sr'
+        
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.main()
+        
+        self.assertEqual(
+            ['MILE', 'OMol', 'InchiKey', 'MW'],
+            list(bleach.df.columns)
         )
 
 
