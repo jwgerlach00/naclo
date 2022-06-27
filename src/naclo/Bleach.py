@@ -29,10 +29,10 @@ class Bleach:
         self.__structure_checker()
         self.target_col = params['target_col']
         
-        self.mol_col = ''
-        self.smiles_col = ''
-        self.inchi_key_col = ''
+        self.mol_col = None
+        self.smiles_col = None
         self.__set_structure_cols()  # Assign mol and SMILES cols using input + defaults
+        self.inchi_key_col = None
         
         # Load user options
         self.mol_settings = options['molecule_settings']
@@ -143,7 +143,6 @@ class Bleach:
     def __set_structure_cols(self) -> None:
         self.mol_col = self.structure_col if self.structure_type == 'mol' else self.__default_cols['mol']
         self.smiles_col = self.structure_col if self.structure_type == 'smiles' else self.__default_cols['smiles']
-        self.inchi_key_col = self.__default_cols['inchi_key']
         
     
 
@@ -157,8 +156,7 @@ class Bleach:
         self.drop_na()  # Before init_structure bc need NA
         self.init_structure_compute()
         self.mol_cleanup()  # Clean Mols and SMILES
-        self.compute_inchi_keys()
-        # self.handle_duplicates(built_df)  # Drop/average/keep duplicates
+        self.handle_duplicates()  # Drop/average/keep duplicates
         # self.append_columns()  # Add or remove columns from final output
         # self.remove_header_chars()  # Remove characters from headers
     
@@ -207,26 +205,25 @@ class Bleach:
         if self.mol_settings['neutralize_charges']['run']:
             self.__neutralize_charges()
     
-    # Step 4
-    def compute_inchi_keys(self):  # *
+    def __compute_inchi_keys(self):
+        self.inchi_key_col = self.__default_cols['inchi_key']
         self.df = naclo.dataframes.df_mols_2_inchi_keys(self.df, self.mol_col, self.inchi_key_col)
     
-    # Step 5
-    def handle_duplicates(self, df:pd.DataFrame):
-        """Averages, removes, or keeps duplicates.
+    # Step 4
+    def handle_duplicates(self):  # *
+        """Averages, removes, or keeps duplicates. ONLY BY INCHI KEY FOR NOW.
 
         Args:
             df (pandas DataFrame): Data to transform
         """
+        self.__compute_inchi_keys()
         
         dup = self.file_settings['duplicate_compounds']
         
         if dup['selected'] == 'average' and self.target_col:
-            df = stse.duplicates.average(df, subsets=[self.inchi_key_col], average_by=self.target_col)
+            self.df = stse.duplicates.average(self.df, subsets=[self.inchi_key_col], average_by=self.target_col)
         elif dup['selected'] == 'remove' or (dup['selected'] == 'average' and not self.target_col):
-            df = stse.duplicates.remove(df, subsets=[self.inchi_key_col])
-        
-        self.df = df
+            self.df = stse.duplicates.remove(self.df, subsets=[self.inchi_key_col])
     
     # Step 6
     def append_columns(self):

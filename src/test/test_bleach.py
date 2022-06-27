@@ -312,31 +312,77 @@ class TestBleach(unittest.TestCase):
             bleach.df['SMILES'].equals(expected['SMILES'])
         )
         
-    def test_compute_inchi_keys(self):
+    def test_handle_duplicates(self):
         params = copy.deepcopy(self.default_params)
         options = copy.deepcopy(self.default_options)
         params['structure_col'] = 'SMILES'
         params['structure_type'] = 'smiles'
+        params['target_col'] = 'target'
         
-        bleach = Bleach(self.smiles_df, params, options)
+        df = self.smiles_df.copy()
+        df['target'] = [1, 2, 3, 4, 5, 6, 7]
+        
+        # Average
+        bleach = Bleach(df, params, options)
         bleach.drop_na()
         bleach.init_structure_compute()
         bleach.mol_cleanup()
-        bleach.compute_inchi_keys()
+        bleach.handle_duplicates()
         
         expected = pd.DataFrame({
             'SMILES': ['Cc1cc(/C=C/C#N)cc(C)c1Nc1nc(Nc2ccc(C#N)cc2)ncc1N',
                        'Cc1cc(/C=C/C#N)cc(C)c1Nc1ncc(N)c(Nc2c(C)cc(/C=C/C#N)cc2C)n1',
                        'CCC',
-                       'CCC',
-                       'C']
+                       'C'],
+            
+            'InchiKey': [
+                'NFQWIYBXPYHNRC-ONEGZZNKSA-N',
+                'IKTVSGAURLVDFP-KQQUZDAGSA-N',
+                'ATUOYWHBWRKTHZ-UHFFFAOYSA-N',
+                'VNWKTOKETHGBQD-UHFFFAOYSA-N'],
+            
+            'target': [1,
+                       2,
+                       3.5,
+                       5]
         })
         
-        inchi_keys = [Chem.MolToInchiKey(mol) for mol in bleach.df['ROMol']]
+        self.assertTrue(
+            bleach.df[['SMILES', 'InchiKey', 'target']].reset_index(drop=True).equals(expected)
+        )
         
-        self.assertEqual(
-            bleach.df['InchiKey'].tolist(),
-            inchi_keys
+        # Remove
+        options['file_settings']['duplicate_compounds']['selected'] = 'remove'
+        bleach = Bleach(df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        bleach.handle_duplicates()
+        
+        expected['target'] = [1, 2, 3, 5]
+        
+        self.assertTrue(
+            bleach.df[['SMILES', 'InchiKey', 'target']].reset_index(drop=True).equals(expected)
+        )
+        
+        # Keep
+        options['file_settings']['duplicate_compounds']['selected'] = 'keep'
+        bleach = Bleach(df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        
+        df1 = bleach.df.copy()
+        bleach.handle_duplicates()
+        df2 = bleach.df.copy().drop('InchiKey', axis=1)
+        
+        self.assertTrue(
+            df1.equals(df2)
+        )
+        
+        self.assertIn(
+            'InchiKey',
+            bleach.df.columns
         )
 
 
