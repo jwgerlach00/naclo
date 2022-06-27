@@ -6,6 +6,7 @@ import numpy as np
 from naclo import Bleach
 import warnings
 from rdkit import Chem
+import copy
 
 
 class TestBleach(unittest.TestCase):
@@ -21,8 +22,9 @@ class TestBleach(unittest.TestCase):
             'SMILES': ['Cc1cc(/C=C/C#N)cc(C)c1Nc1nc(Nc2ccc(C#N)cc2)ncc1N',
                        'Cc1cc(/C=C/C#N)cc(C)c1Nc1ncc(N)c(Nc2c(C)cc(/C=C/C#N)cc2C)n1',
                        'CCC',
-                       'CCC',
+                       'CCC.Cl',
                        'C.NO.S',
+                       'Br',
                        '']
         })
         
@@ -31,8 +33,8 @@ class TestBleach(unittest.TestCase):
         return super().setUpClass()
     
     def test_init_error_checker(self):
-        params = self.default_params.copy()
-        options = self.default_options.copy()
+        params = copy.deepcopy(self.default_params)
+        options = copy.deepcopy(self.default_options)
         
         try:
             Bleach(self.smiles_df, params, options)
@@ -65,8 +67,8 @@ class TestBleach(unittest.TestCase):
         Bleach(self.smiles_df, params, options)
         
     def test_recognized_options_checker(self):
-        params = self.default_params.copy()
-        options = self.default_options.copy()
+        params = copy.deepcopy(self.default_params)
+        options = copy.deepcopy(self.default_options)
         params['structure_col'] = 'SMILES'
         params['structure_type'] = 'smiles'
         options['molecule_settings']['neutralize_charges']['run'] = 42
@@ -100,7 +102,7 @@ class TestBleach(unittest.TestCase):
             'drop_empty': 6*[np.nan]
         })
         
-        params = self.default_params.copy()
+        params = copy.deepcopy(self.default_params)
         
         # SMILES
         params['structure_col'] = 'SMILES'
@@ -165,7 +167,7 @@ class TestBleach(unittest.TestCase):
         )
         
         # Set to drop NA targets
-        options = self.default_options.copy()
+        options = copy.deepcopy(self.default_options)
         options['file_settings']['remove_na_targets']['run'] = True
         
         bleach = Bleach(df, params, options)
@@ -178,15 +180,15 @@ class TestBleach(unittest.TestCase):
                 'ALL_NA_TARGETS: All targets in specified column were NA, all rows dropped'
             )
             
-    def test_compute_mols(self):
+    def test_init_structure_compute(self):
         # From SMILES
-        params = self.default_params.copy()
+        params = copy.deepcopy(self.default_params)
         params['structure_col'] = 'SMILES'
         params['structure_type'] = 'smiles'
         
         bleach = Bleach(self.smiles_df, params, self.default_options)
         bleach.drop_na()
-        bleach.compute_mols()
+        bleach.init_structure_compute()
 
         [self.assertIsInstance(m, Chem.rdchem.Mol) for m in bleach.df['ROMol']]
         
@@ -201,7 +203,7 @@ class TestBleach(unittest.TestCase):
         mol_df = pd.concat((mol_df, new_row))
         bleach = Bleach(mol_df, params, self.default_options)
         bleach.drop_na()
-        bleach.compute_mols()
+        bleach.init_structure_compute()
         
         self.assertEqual(
             bleach.df['SMILES'].tolist(),
@@ -214,50 +216,100 @@ class TestBleach(unittest.TestCase):
         params['structure_type'] = 'mol'
         bleach = Bleach(mol_df, params, self.default_options)
         bleach.drop_na()
-        bleach.compute_mols()
-        print(bleach.df)
+        bleach.init_structure_compute()
         
         [self.assertIsInstance(m, Chem.rdchem.Mol) for m in bleach.df['ROMol']]
         self.assertEqual(
             len(bleach.df),
-            5
+            6
         )
         self.assertEqual(
             bleach.df['SMILES'].tolist(),
             self.smiles_df['SMILES'].tolist()[:-1]  # Excluding blank
         )
-
-    # def test_remove_fragments(self):
-    #     params = self.default_params.copy()
-    #     options = self.default_options.copy()
-    #     params['smiles_col'] = 'SMILES'
         
-    #     # Carbon count
-    #     options['molecule_settings']['remove_fragments']['filter_method'] = 'carbon_count'
-    #     bleach = Bleach(self.smiles_df, params, options)
-    #     df = bleach.main()
-    #     self.assertEqual(
-    #         df['SMILES'].iloc[-1],
-    #         'C'
-    #     )
+    def test_mol_cleanup(self):
+        params = copy.deepcopy(self.default_params)
+        options = copy.deepcopy(self.default_options)
+        params['structure_col'] = 'SMILES'
+        params['structure_type'] = 'smiles'
         
-    #     # Atom count
-    #     options['molecule_settings']['remove_fragments']['filter_method'] = 'atom_count'
-    #     bleach = Bleach(self.smiles_df, params, options)
-    #     df = bleach.main()
-    #     self.assertEqual(
-    #         df['SMILES'].iloc[-1],
-    #         'NO'
-    #     )
+        # Salts only
+        options['molecule_settings']['remove_fragments']['filter_method'] = 'none'
         
-    #     # Molecular weight
-    #     options['molecule_settings']['remove_fragments']['filter_method'] = 'mw'
-    #     bleach = Bleach(self.smiles_df, params, options)
-    #     df = bleach.main()
-    #     self.assertEqual(
-    #         df['SMILES'].iloc[-1],
-    #         'S'
-    #     )
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        
+        expected = pd.DataFrame({
+            'SMILES': ['Cc1cc(/C=C/C#N)cc(C)c1Nc1nc(Nc2ccc(C#N)cc2)ncc1N',
+                       'Cc1cc(/C=C/C#N)cc(C)c1Nc1ncc(N)c(Nc2c(C)cc(/C=C/C#N)cc2C)n1',
+                       'CCC',
+                       'CCC',
+                       'C.NO.S']
+        })
+        
+        self.assertTrue(
+            bleach.df['SMILES'].equals(expected['SMILES'])
+        )
+        
+        # Filters only
+        options['molecule_settings']['remove_fragments']['salts'] = ''
+        
+        # Carbon count
+        options['molecule_settings']['remove_fragments']['filter_method'] = 'carbon_count'
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        self.assertEqual(
+            bleach.df['SMILES'].iloc[-2],
+            'C'
+        )
+        
+        # Atom count
+        options['molecule_settings']['remove_fragments']['filter_method'] = 'atom_count'
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        self.assertEqual(
+            bleach.df['SMILES'].iloc[-2],
+            'NO'
+        )
+        
+        # Molecular weight
+        options['molecule_settings']['remove_fragments']['filter_method'] = 'mw'
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        self.assertEqual(
+            bleach.df['SMILES'].iloc[-2],
+            'S'
+        )
+        
+        # Salts + filter together
+        options['molecule_settings']['remove_fragments']['salts'] = 'Cl,Br'
+        options['molecule_settings']['remove_fragments']['filter_method'] = 'carbon_count'
+        
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        
+        expected = pd.DataFrame({
+            'SMILES': ['Cc1cc(/C=C/C#N)cc(C)c1Nc1nc(Nc2ccc(C#N)cc2)ncc1N',
+                       'Cc1cc(/C=C/C#N)cc(C)c1Nc1ncc(N)c(Nc2c(C)cc(/C=C/C#N)cc2C)n1',
+                       'CCC',
+                       'CCC',
+                       'C']
+        })
+        
+        self.assertTrue(
+            bleach.df['SMILES'].equals(expected['SMILES'])
+        )
 
 
 if __name__ == '__main__':

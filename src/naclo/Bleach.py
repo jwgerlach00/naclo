@@ -1,5 +1,6 @@
 from distutils import errors
 from logging import warning
+from unittest import TextTestRunner
 import naclo
 import stse
 from rdkit import Chem
@@ -17,18 +18,6 @@ class Bleach:
             'inchi_key': 'InchiKey'
         }
         
-        # Reference point to ensure none are lost (saved after blanks are dropped)
-        self.__reference_mols = []
-        self.__reference_smiles = []
-        
-        # Modified molecular properties
-        self.__smiles = []
-        self.__mols = []
-        self.__inchi_keys = []
-        
-        self.__mol_col = ''
-        self.__smiles_col = ''
-        
         # Save input data
         self.original_df = df.copy()
         self.df = df.copy()
@@ -38,13 +27,23 @@ class Bleach:
         self.structure_type = params['structure_type']
         self.target_col = params['target_col']
         
+        self.__mol_col = ''
+        self.__smiles_col = ''
+        self.__set_structure_cols()
+        
         # Load user options
         self.mol_settings = options['molecule_settings']
         self.file_settings = options['file_settings']
         
         self.__init_error_checker()
         self.__recognized_options_checker()
-            
+        
+    def __build_mols(self):
+        self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.__smiles_col, self.__mol_col)
+        
+    def __build_smiles(self):
+        self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.__mol_col, self.__smiles_col)
+
     def __init_error_checker(self) -> None:  # *
         """Checks for errors related to initialized parameters.
 
@@ -63,7 +62,7 @@ class Bleach:
         if self.structure_type not in self.__recognized_structures:
             raise ValueError('INVALID_STRUCTURE_TYPE', f'Structure type: "{self.structure_type}"" is not one of: \
                 {self.__recognized_structures}')
-            
+
     def __recognized_options_checker(self) -> None:  # *
         """Checks for errors related to unrecognized options.
 
@@ -100,7 +99,7 @@ class Bleach:
         if not len(self.df):
             warnings.warn('ALL_NA_STRUCTURES: All structures in specified column were NA, all rows dropped',
                           RuntimeWarning)
-            
+    
     def __drop_na_targets(self) -> None:  # *
         run_na_targets = self.file_settings['remove_na_targets']['run']
 
@@ -113,6 +112,39 @@ class Bleach:
         elif run_na_targets:
             warnings.warn('NA_TARGETS: options.file_settings.remove_na_targets was set to run but no activity column \
                 was specified', RuntimeWarning)
+
+    def __remove_fragments(self):
+        """Removes salts if specified, then removes other fragments by appropriate method if specified.
+        """
+        option = self.mol_settings['remove_fragments']
+        
+        # Remove salts
+        if option['salts']:
+            self.df[self.__mol_col] = naclo.fragments.remove_salts(self.df[self.__mol_col], salts='[{0}]'.format(
+                option['salts'].replace(' ', '')))
+            self.__build_smiles()
+            self.df = stse.dataframes.convert_to_nan(self.df, na=[''])  # Convert bc NA is just empty string
+            self.df.dropna(subset=[self.__smiles_col], inplace=True)  # Drop NA bc may include molecule that is ONLY salts
+        
+        # Filter
+        if option['filter_method'] and option['filter_method'] != 'none':
+            self.df[self.__smiles_col] = self.df[self.__smiles_col].apply(
+                self.__filter_fragments_factory(option['filter_method']))
+            self.__build_mols()
+    
+    def __neutralize_charges(self):
+        """Neutralizes Mols and rebuilds SMILES.
+        """
+        self.df[self.__mol_col] = naclo.neutralize.neutralize_charges(self.df[self.__mol_col])
+        self.__build_smiles
+        
+    # @classmethod
+    def __set_structure_cols(self) -> None:
+        self.__mol_col = self.structure_col if self.structure_type == 'mol' else self.__default_cols['mol']
+        self.__smiles_col = self.structure_col if self.structure_type == 'smiles' else self.__default_cols['smiles']
+        
+    
+
     
     def main(self) -> pd.DataFrame:
         """Main bleach loop.
@@ -120,22 +152,13 @@ class Bleach:
         Returns:
             pandas DataFrame: Cleaned df
         """
-            
-        self.drop_na()  # Blanks to NA, NA columns, NA features (Mols/SMILES), NA targets
-        self.compute_mols()  # Create and sanitize, refresh SMILES
-        
-        self.__set_reference_point()  # Reference point after dropping NAs and computing
-        
+        self.drop_na()  # Before init_structure bc need NA
+        self.init_structure_compute()
         self.mol_cleanup()  # Clean Mols and SMILES
-        
-        # Ensure that cleaning dropped no Mols or SMILES
-        if not self.__no_mol_drop():
-            self.errors['STRUCTURES_DROPPED_AT_CLEAN'] = 'Cleaning dropped Mols of SMILES'
-        
-        built_df = self.build_df()  # Build dataframe from cleaned Mols, cleaned SMILES, and computed Inchi keys
-        self.handle_duplicates(built_df)  # Drop/average/keep duplicates
-        self.append_columns()  # Add or remove columns from final output
-        self.remove_header_chars()  # Remove characters from headers
+        # built_df = self.build_df()  # Build dataframe from cleaned Mols, cleaned SMILES, and computed Inchi keys
+        # self.handle_duplicates(built_df)  # Drop/average/keep duplicates
+        # self.append_columns()  # Add or remove columns from final output
+        # self.remove_header_chars()  # Remove characters from headers
     
         return self.df
         
@@ -155,25 +178,19 @@ class Bleach:
         self.df = stse.dataframes.remove_nan_cols(self.df)  # After dropping rows because columns may BECOME empty
     
     # Step 2 
-    def compute_mols(self) -> None:
+    def init_structure_compute(self) -> None:
         """Computes Mols if the input doesn't contain a Mol column already, refreshes SMILES by regenerating from Mols.
         """
         
-        self.__mol_col = self.structure_col if self.structure_type == 'mol' else self.__default_cols['mol']
-        self.__smiles_col = self.structure_col if self.structure_type == 'smiles' else self.__default_cols['smiles']
-        
+        # BUILDING WILL ALSO DELETE NA ROWS FROM DF
         if self.structure_type == 'mol':
-            self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.__mol_col, self.__smiles_col)
+            self.__build_smiles()
+            # Rebuilding Mols not necessary
             
         elif self.structure_type == 'smiles':
-            self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.__smiles_col, self.__mol_col)
+            self.__build_mols()
             # Canonicalize SMILES
-            self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.__mol_col, self.__smiles_col)
-            
-        self.__mols = self.df[self.__mol_col].tolist()
-        self.__smiles = self.df[self.__smiles_col].tolist()
-        
-        
+            self.__build_smiles()  # Canonicalize SMILES
         
     # Step 3
     def mol_cleanup(self):
@@ -236,12 +253,6 @@ class Bleach:
         """
         chars = self.file_settings['remove_header_chars']['chars']
         self.df = stse.dataframes.remove_header_chars(self.df, chars)
-        
-    def __set_reference_point(self):
-        """Sets reference Mols and SMILES.
-        """
-        self.__reference_smiles = self.__smiles
-        self.__reference_mols = self.__mols
     
     def __drop_columns(self):  # Note: everything already has a Molecule column added
         """Removes columns that the user does not want in the final output.
@@ -270,38 +281,14 @@ class Bleach:
         # Add MW column
         if option['MW']:
             self.df.assign(MW = naclo.mol_weights(self.df[self.mol_col]))
-            
-    def __remove_fragments(self):
-        """Removes salts if specified, then removes other fragments by appropriate method if specified.
-        """
-        option = self.mol_settings['remove_fragments']
-        
-        # Remove salts (separate option -- bc may include a molecule that is ONLY salts --> NA drop is later)
-        if option['salts']:
-            self.__mols = naclo.fragments.remove_salts(self.__mols, salts='[{0}]'.format(option['salts'].replace(' ', '')))
-        
-        # Controlled by method of removing fragments
-        if not option['filter_method']:  # Break if no method
-            return
-        elif option['filter_method'] == 'carbon_count':
-            self.__smiles = [naclo.fragments.carbon_count(s) for s in self.__smiles]
-        elif option['filter_method'] == 'mw':
-            self.__smiles = [naclo.fragments.mw(s) for s in self.__smiles]
-        elif option['filter_method'] == 'atom_count':
-            self.__smiles = [naclo.fragments.atom_count(s) for s in self.__smiles]
-        
-        self.__mols = naclo.smiles_2_mols(self.__smiles)  # Build Mols from new SMILES
-        
-    def __neutralize_charges(self):
-        """Neutralizes Mols and rebuilds SMILES.
-        """
-        self.__mols = naclo.neutralize.neutralize_charges(self.__mols)
-        self.__smiles = naclo.mols_2_smiles(self.__mols)  # Build SMILES from new Mols
     
-    def __no_mol_drop(self):
-        """Evaluates truth of equality between lengths of Mols, SMILES, reference Mols, reference SMILES.
-
-        Returns:
-            bool: Truth of equality
-        """
-        return len(self.__mols) == len(self.__smiles) == len(self.__reference_mols) == len(self.__reference_smiles)
+    @staticmethod
+    def __filter_fragments_factory(method):
+        if method == 'carbon_count':
+            return naclo.fragments.carbon_count
+        elif method == 'mw':
+            return naclo.fragments.mw
+        elif method == 'atom_count':
+            return naclo.fragments.atom_count
+        else:
+            raise ValueError('Filter method is not allowed')
