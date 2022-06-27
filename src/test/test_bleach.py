@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import numpy as np
 from naclo import Bleach
+import naclo
 import warnings
 from rdkit import Chem
 import copy
@@ -309,6 +310,33 @@ class TestBleach(unittest.TestCase):
         
         self.assertTrue(
             bleach.df['SMILES'].equals(expected['SMILES'])
+        )
+        
+    def test_compute_inchi_keys(self):
+        params = copy.deepcopy(self.default_params)
+        options = copy.deepcopy(self.default_options)
+        params['structure_col'] = 'SMILES'
+        params['structure_type'] = 'smiles'
+        
+        bleach = Bleach(self.smiles_df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.mol_cleanup()
+        bleach.compute_inchi_keys()
+        
+        expected = pd.DataFrame({
+            'SMILES': ['Cc1cc(/C=C/C#N)cc(C)c1Nc1nc(Nc2ccc(C#N)cc2)ncc1N',
+                       'Cc1cc(/C=C/C#N)cc(C)c1Nc1ncc(N)c(Nc2c(C)cc(/C=C/C#N)cc2C)n1',
+                       'CCC',
+                       'CCC',
+                       'C']
+        })
+        
+        inchi_keys = [Chem.MolToInchiKey(mol) for mol in bleach.df['ROMol']]
+        
+        self.assertEqual(
+            bleach.df['InchiKey'].tolist(),
+            inchi_keys
         )
 
 

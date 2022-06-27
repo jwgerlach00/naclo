@@ -15,7 +15,8 @@ class Bleach:
         self.__default_cols = {
             'smiles': 'SMILES',
             'mol': 'ROMol',
-            'inchi_key': 'InchiKey'
+            'inchi_key': 'InchiKey',
+            'mw': 'MW'
         }
         
         # Save input data
@@ -25,26 +26,27 @@ class Bleach:
         # Load file parameters
         self.structure_col = params['structure_col']
         self.structure_type = params['structure_type']
+        self.__structure_checker()
         self.target_col = params['target_col']
         
-        self.__mol_col = ''
-        self.__smiles_col = ''
-        self.__set_structure_cols()
+        self.mol_col = ''
+        self.smiles_col = ''
+        self.inchi_key_col = ''
+        self.__set_structure_cols()  # Assign mol and SMILES cols using input + defaults
         
         # Load user options
         self.mol_settings = options['molecule_settings']
         self.file_settings = options['file_settings']
         
-        self.__init_error_checker()
         self.__recognized_options_checker()
         
     def __build_mols(self):
-        self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.__smiles_col, self.__mol_col)
+        self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.smiles_col, self.mol_col)
         
     def __build_smiles(self):
-        self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.__mol_col, self.__smiles_col)
+        self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.mol_col, self.smiles_col)
 
-    def __init_error_checker(self) -> None:  # *
+    def __structure_checker(self) -> None:  # *
         """Checks for errors related to initialized parameters.
 
         Raises:
@@ -120,28 +122,28 @@ class Bleach:
         
         # Remove salts
         if option['salts']:
-            self.df[self.__mol_col] = naclo.fragments.remove_salts(self.df[self.__mol_col], salts='[{0}]'.format(
+            self.df[self.mol_col] = naclo.fragments.remove_salts(self.df[self.mol_col], salts='[{0}]'.format(
                 option['salts'].replace(' ', '')))
             self.__build_smiles()
             self.df = stse.dataframes.convert_to_nan(self.df, na=[''])  # Convert bc NA is just empty string
-            self.df.dropna(subset=[self.__smiles_col], inplace=True)  # Drop NA bc may include molecule that is ONLY salts
+            self.df.dropna(subset=[self.smiles_col], inplace=True)  # Drop NA bc may include molecule that is ONLY salts
         
         # Filter
         if option['filter_method'] and option['filter_method'] != 'none':
-            self.df[self.__smiles_col] = self.df[self.__smiles_col].apply(
+            self.df[self.smiles_col] = self.df[self.smiles_col].apply(
                 self.__filter_fragments_factory(option['filter_method']))
             self.__build_mols()
     
     def __neutralize_charges(self):
         """Neutralizes Mols and rebuilds SMILES.
         """
-        self.df[self.__mol_col] = naclo.neutralize.neutralize_charges(self.df[self.__mol_col])
+        self.df[self.mol_col] = naclo.neutralize.neutralize_charges(self.df[self.mol_col])
         self.__build_smiles
         
-    # @classmethod
     def __set_structure_cols(self) -> None:
-        self.__mol_col = self.structure_col if self.structure_type == 'mol' else self.__default_cols['mol']
-        self.__smiles_col = self.structure_col if self.structure_type == 'smiles' else self.__default_cols['smiles']
+        self.mol_col = self.structure_col if self.structure_type == 'mol' else self.__default_cols['mol']
+        self.smiles_col = self.structure_col if self.structure_type == 'smiles' else self.__default_cols['smiles']
+        self.inchi_key_col = self.__default_cols['inchi_key']
         
     
 
@@ -155,7 +157,7 @@ class Bleach:
         self.drop_na()  # Before init_structure bc need NA
         self.init_structure_compute()
         self.mol_cleanup()  # Clean Mols and SMILES
-        # built_df = self.build_df()  # Build dataframe from cleaned Mols, cleaned SMILES, and computed Inchi keys
+        self.compute_inchi_keys()
         # self.handle_duplicates(built_df)  # Drop/average/keep duplicates
         # self.append_columns()  # Add or remove columns from final output
         # self.remove_header_chars()  # Remove characters from headers
@@ -178,7 +180,7 @@ class Bleach:
         self.df = stse.dataframes.remove_nan_cols(self.df)  # After dropping rows because columns may BECOME empty
     
     # Step 2 
-    def init_structure_compute(self) -> None:
+    def init_structure_compute(self) -> None:  # *
         """Computes Mols if the input doesn't contain a Mol column already, refreshes SMILES by regenerating from Mols.
         """
         
@@ -193,7 +195,7 @@ class Bleach:
             self.__build_smiles()  # Canonicalize SMILES
         
     # Step 3
-    def mol_cleanup(self):
+    def mol_cleanup(self):  # *
         """Cleans Mols and SMILES.
         """
         
@@ -206,19 +208,8 @@ class Bleach:
             self.__neutralize_charges()
     
     # Step 4
-    def build_df(self):
-        """Builds df prior to handling of duplicates.
-
-        Returns:
-            pandas DataFrame: self.df with Mols, SMILES, and Inchi Keys added
-        """
-        
-        out = self.df.copy()
-        out[self.mol_col if self.mol_col else self.__default_cols['mol']] = self.__mols
-        out[self.smiles_col if self.smiles_col else self.__default_cols['smiles']] = self.__smiles
-        out[self.inchi_keys_col if self.inchi_keys_col else self.__default_cols['inchi_key']] = \
-            naclo.mols_2_inchi_keys(self.__mols)
-        return out
+    def compute_inchi_keys(self):  # *
+        self.df = naclo.dataframes.df_mols_2_inchi_keys(self.df, self.mol_col, self.inchi_key_col)
     
     # Step 5
     def handle_duplicates(self, df:pd.DataFrame):
@@ -231,9 +222,9 @@ class Bleach:
         dup = self.file_settings['duplicate_compounds']
         
         if dup['selected'] == 'average' and self.target_col:
-            df = stse.duplicates.average(df, subsets=[self.inchi_keys_col], average_by=self.target_col)
+            df = stse.duplicates.average(df, subsets=[self.inchi_key_col], average_by=self.target_col)
         elif dup['selected'] == 'remove' or (dup['selected'] == 'average' and not self.target_col):
-            df = stse.duplicates.remove(df, subsets=[self.inchi_keys_col])
+            df = stse.duplicates.remove(df, subsets=[self.inchi_key_col])
         
         self.df = df
     
