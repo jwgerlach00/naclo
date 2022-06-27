@@ -31,7 +31,7 @@ class TestBleach(unittest.TestCase):
         
         return super().setUpClass()
     
-    def test_init_error_checker(self):
+    def test_param_checker(self):
         params = copy.deepcopy(self.default_params)
         options = copy.deepcopy(self.default_options)
         
@@ -61,8 +61,18 @@ class TestBleach(unittest.TestCase):
                 'INVALID_STRUCTURE_TYPE'
             )
         
-        # Should run fine
         params['structure_type'] = 'smiles'
+        params['target_col'] = 'test'
+        try:
+            Bleach(self.smiles_df, params, options)
+        except ValueError as e:
+            self.assertEqual(
+                e.args[0],
+                'TARGET_COLUMN_NOT_FOUND'
+            )
+        
+        # Should run fine
+        params['target_col'] = 'SMILES'
         Bleach(self.smiles_df, params, options)
         
     def test_recognized_options_checker(self):

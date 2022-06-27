@@ -10,6 +10,11 @@ import stse
 
 class Bleach:
     def __init__(self, df:pd.DataFrame, params:dict, options:dict) -> None:  # *
+        # Load user options
+        self.mol_settings = options['molecule_settings']
+        self.file_settings = options['file_settings']
+        self.__recognized_options_checker()
+        
         self.__recognized_structures = ['smiles', 'mol']
         self.__default_cols = {
             'smiles': 'SMILES',
@@ -18,54 +23,23 @@ class Bleach:
             'mw': 'MW'
         }
         
-        # Save input data
+        # Save user input data
         self.original_df = df.copy()
         self.df = df.copy()
         
         # Load file parameters
         self.structure_col = params['structure_col']
         self.structure_type = params['structure_type']
-        self.__structure_checker()
         self.target_col = params['target_col']
+        self.__param_checker()
         
         self.mol_col = None
         self.smiles_col = None
         self.__set_structure_cols()  # Assign mol and SMILES cols using input + defaults
         self.inchi_key_col = None
         
-        # Load user options
-        self.mol_settings = options['molecule_settings']
-        self.file_settings = options['file_settings']
-        
-        self.__recognized_options_checker()
-        
-    def __build_mols(self):
-        self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.smiles_col, self.mol_col)
-        
-    def __build_smiles(self):
-        self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.mol_col, self.smiles_col)
-
-    def __structure_checker(self) -> None:  # *
-        """Checks for errors related to initialized parameters.
-
-        Raises:
-            ValueError: NO_STRUCTURE_COLUMN
-            ValueError: STRUCTURE_COLUMN_NOT_FOUND
-            ValueError: INVALID_STRUCTURE_TYPE
-        """
-        if not self.structure_col:
-            raise ValueError('NO_STRUCTURE_COLUMN', 'Must specify the name of the structure column in params')
-            
-        if self.structure_col not in self.df.columns:
-            raise ValueError('STRUCTURE_COLUMN_NOT_FOUND', f'The structure column: "{self.structure_col}"" is not \
-                present in the data: "{list(self.df.columns)}"')
-            
-        if self.structure_type not in self.__recognized_structures:
-            raise ValueError('INVALID_STRUCTURE_TYPE', f'Structure type: "{self.structure_type}"" is not one of: \
-                {self.__recognized_structures}')
-
     def __recognized_options_checker(self) -> None:  # *
-        """Checks for errors related to unrecognized options.
+        """Checks for errors related to unrecognized option assignmnets.
 
         Raises:
             ValueError: BAD_OPTION(S)
@@ -89,9 +63,40 @@ class Bleach:
                 if not type(input[key]) == type(recognized[key]):
                     errors[f'BAD_OPTION{key.upper()}'] = f'{type(input[key])} is not an accepted type for {key}, \
                         input a {type(recognized[key])}'
-    
         if errors:
             raise ValueError(errors)
+        
+    def __param_checker(self) -> None:  # *
+        """Checks for errors related to initialized structure.
+
+        Raises:
+            ValueError: NO_STRUCTURE_COLUMN
+            ValueError: STRUCTURE_COLUMN_NOT_FOUND
+            ValueError: INVALID_STRUCTURE_TYPE
+        """
+        if not self.structure_col:
+            raise ValueError('NO_STRUCTURE_COLUMN', 'Must specify the name of the structure column in params')
+            
+        if self.structure_col not in self.df.columns:
+            raise ValueError('STRUCTURE_COLUMN_NOT_FOUND', f'The structure column: "{self.structure_col}"" is not \
+                present in the data: "{list(self.df.columns)}"')
+            
+        if self.structure_type not in self.__recognized_structures:
+            raise ValueError('INVALID_STRUCTURE_TYPE', f'Structure type: "{self.structure_type}"" is not one of: \
+                {self.__recognized_structures}')
+            
+        if self.target_col and self.target_col not in self.df.columns:
+            raise ValueError('TARGET_COLUMN_NOT_FOUND', f'The target column: "{self.target_col}"" is not present in \
+                the data: "{list(self.df.columns)}"')
+            
+        
+    def __build_mols(self):
+        self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.smiles_col, self.mol_col)
+        
+    def __build_smiles(self):
+        self.df = naclo.dataframes.df_mols_2_smiles(self.df, self.mol_col, self.smiles_col)
+
+    
         
     def __drop_na_structures(self) -> None:  # *
         """Drops NA along a feature column depending on whether Mols or SMILES were inputted.
