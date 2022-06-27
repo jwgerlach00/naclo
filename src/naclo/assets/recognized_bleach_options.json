@@ -5,7 +5,7 @@
         },
         "remove_fragments": {
             "salts": "",
-            "filter_method": ["carbon_count", "mw", "atom_count"]
+            "filter_method": ["carbon_count", "mw", "atom_count", "none", ""]
         }
     },
 
