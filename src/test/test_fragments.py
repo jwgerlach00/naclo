@@ -37,6 +37,18 @@ class TestFragments(unittest.TestCase):
             mols_2_smiles(frag.remove_salts(test_mols, salts='[N]')), 
             ['CN(C)C.Cl', 'CN(C)C']
         )
+        
+        # Test no salts
+        self.assertEqual(
+            mols_2_smiles(frag.remove_salts(smiles_2_mols(['Cl', 'Br']))),
+            ['', '']
+        )
+        
+        # Doesn't remove when covalently bonded
+        self.assertEqual(
+            mols_2_smiles(frag.remove_salts(smiles_2_mols(['CCCCl']))),
+            ['CCCCl']
+        )
 
 
 if __name__ == '__main__':

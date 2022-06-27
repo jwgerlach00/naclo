@@ -2,6 +2,7 @@ from rdkit import Chem
 from rdkit.Chem.Descriptors import ExactMolWt
 from naclo import mol_stats
 from rdkit.Chem.SaltRemover import SaltRemover
+import numpy as np
 
 
 def mw(smile):  # *
@@ -74,5 +75,4 @@ def remove_salts(mols, salts='[Cl,Br]'):  # *
         list: Contains RDKit Mol objects with salts removed.
     """
     remover = SaltRemover(defnData=salts)
-        
     return [remover.StripMol(mol) for mol in mols]
