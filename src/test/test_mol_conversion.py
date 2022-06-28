@@ -1,19 +1,21 @@
 import unittest
 from naclo import mol_conversion
 from rdkit.Chem import PandasTools
+from rdkit import DataStructs
 import pandas as pd
+import numpy as np
 
 
 class TestMolConversion(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         # Load excel test data
-        test_excel = pd.read_excel('test/excel_test_case.xlsx')
+        test_excel = pd.read_excel('test/assets/excel_test_case.xlsx')
         cls.excel_smiles = list(test_excel.Smiles)
         cls.excel_inchi_keys = list(test_excel.InChi)
 
         # Load SDF test data
-        test_sdf = PandasTools.LoadSDF('test/sdf_test_case.sdf', molColName='Molecule')
+        test_sdf = PandasTools.LoadSDF('test/assets/sdf_test_case.sdf', molColName='Molecule')
         cls.sdf_mols = list(test_sdf.Molecule)
         cls.sdf_smiles = list(test_sdf.Smiles)
         
@@ -45,13 +47,27 @@ class TestMolConversion(unittest.TestCase):
 
     def test_mols_2_ecfp(self):
         ecfp = mol_conversion.mols_2_ecfp(self.sdf_mols, return_numpy=True)
-        print(ecfp)
-        for i in ecfp:
-            print(len(i))
-            print(sum(i))
+        self.assertEqual(
+            len(ecfp[0]),
+            1024
+        )
+        self.assertIsInstance(
+            ecfp[0],
+            np.ndarray
+        )
+        
+        print_objs = mol_conversion.mols_2_ecfp(self.sdf_mols, return_numpy=False)
+        self.assertIsInstance(
+            print_objs[0],
+            DataStructs.cDataStructs.UIntSparseIntVect
+        )
         
     def test_mols_2_maccs(self):
-        mol_conversion.mols_2_maccs(self.sdf_mols)
+        maccss = mol_conversion.mols_2_maccs(self.sdf_mols)
+        self.assertIsInstance(
+            maccss[0],
+            DataStructs.cDataStructs.ExplicitBitVect
+        )
 
 
 if __name__ == '__main__':

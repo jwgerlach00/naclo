@@ -2,7 +2,7 @@ import unittest
 import json
 import pandas as pd
 import numpy as np
-from naclo import Bleach
+from naclo import Bleach, bleach_default_options, bleach_default_params
 import warnings
 from rdkit import Chem
 import copy
@@ -11,11 +11,8 @@ import copy
 class TestBleach(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        with open('test/default_params.json') as f:
-            cls.default_params = json.load(f)
-        
-        with open('test/default_options.json') as f:
-            cls.default_options = json.load(f)
+        cls.default_params = bleach_default_params
+        cls.default_options = bleach_default_options
             
         cls.smiles_df = pd.DataFrame({
             'SMILES': ['Cc1cc(/C=C/C#N)cc(C)c1Nc1nc(Nc2ccc(C#N)cc2)ncc1N',

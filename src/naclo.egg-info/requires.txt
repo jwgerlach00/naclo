@@ -1,4 +1,0 @@
-numpy
-pandas
-rdkit_pypi
-stse

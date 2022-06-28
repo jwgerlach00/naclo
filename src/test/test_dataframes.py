@@ -29,9 +29,9 @@ class TestDataframes(unittest.TestCase):
                       None]
             })
         
-        cls.excel_df = pd.read_excel('test/excel_test_case.xlsx')
+        cls.excel_df = pd.read_excel('test/assets/excel_test_case.xlsx')
         cls.excel_df = dataframes.df_smiles_2_mols(cls.excel_df, 'Smiles', 'Molecule')
-        cls.sdf_df = PandasTools.LoadSDF('test/sdf_test_case.sdf', molColName='Molecule')
+        cls.sdf_df = PandasTools.LoadSDF('test/assets/sdf_test_case.sdf', molColName='Molecule')
         cls.sdf_df.ID = list(range(4))
         
         return super().setUpClass()
@@ -65,8 +65,8 @@ class TestDataframes(unittest.TestCase):
         
     def test_write_sdf(self):
         # Write new and load new
-        dataframes.write_sdf(self.excel_df, 'test/sdf_test_out.sdf', mol_col_name='Molecule')
-        load_sdf = PandasTools.LoadSDF('test/sdf_test_out.sdf', molColName='Molecule')
+        dataframes.write_sdf(self.excel_df, 'test/assets/sdf_test_out.sdf', mol_col_name='Molecule')
+        load_sdf = PandasTools.LoadSDF('test/assets/sdf_test_out.sdf', molColName='Molecule')
         
         # Ensure Mols are the same
         self.assertEqual(
@@ -99,7 +99,7 @@ class TestDataframesWriter(unittest.TestCase):
         # self.writer.rdkit_2_excel(buf)
         
         # Test with path --> REQUIRES VISUAL CONFIRMATION
-        path = 'writer_rdkit_2_excel_test_case.xlsx'
+        path = 'test/assets/writer_rdkit_2_excel_test_case.xlsx'
         self.writer.rdkit_2_excel(path)
         
     def test_writer_write(self):
