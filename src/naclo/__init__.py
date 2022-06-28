@@ -11,4 +11,4 @@ from naclo import neutralize
 from naclo import rdpickle
 from naclo import visualization
 from naclo.Bleach import Bleach
-from naclo.assets import bleach_default_options, bleach_default_params
+from naclo.__asset_loader import bleach_default_params, bleach_default_options

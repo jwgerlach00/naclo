@@ -6,6 +6,7 @@ from typing import Callable
 # sourced from github.com/jwgerlach00
 import naclo
 import stse
+from naclo.__asset_loader import recognized_bleach_options as recognized_options
 
 
 class Bleach:
@@ -46,9 +47,6 @@ class Bleach:
         Raises:
             ValueError: BAD_OPTION(S)
         """
-        with open('naclo/assets/recognized_bleach_options.json') as f:
-            recognized_options = json.load(f)
-
         input = stse.dictionaries.branches({
             'molecule_settings': self.mol_settings,
             'file_settings': self.file_settings

@@ -1,6 +1,7 @@
 setup.py
 src/naclo/Bleach.py
 src/naclo/Writer.py
+src/naclo/__asset_loader.py
 src/naclo/__init__.py
 src/naclo/database.py
 src/naclo/dataframes.py
@@ -15,6 +16,10 @@ src/naclo.egg-info/SOURCES.txt
 src/naclo.egg-info/dependency_links.txt
 src/naclo.egg-info/requires.txt
 src/naclo.egg-info/top_level.txt
+src/naclo/assets/__init__.py
+src/naclo/assets/default_options.json
+src/naclo/assets/default_params.json
+src/naclo/assets/recognized_bleach_options.json
 src/test/__init__.py
 src/test/test_bleach.py
 src/test/test_dataframes.py
