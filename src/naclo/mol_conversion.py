@@ -1,27 +1,29 @@
 from rdkit import Chem
 import numpy as np
 from rdkit.Chem import AllChem, MACCSkeys, DataStructs
+from typing import Iterable, List, Union
+import pandas as pd
 
 
-def mols_2_smiles(mols):  # *
+def mols_2_smiles(mols:Iterable[Chem.rdchem.Mol]) -> List[str]:  # *
     """Generates SMILES strings from list of rdkit Mol objects.
 
     Args:
-        mols (iter[rdkit Mol]): Contains RDKit Mols.
+        mols (Iterable[Chem.rdchem.Mol]): Contains RDKit Mols.
 
     Returns:
-        list[str]: Contains SMILES strings.
+        List[str]: Contains SMILES strings.
     """
     return [Chem.MolToSmiles(mol) for mol in mols]
 
-def smiles_2_mols(smiles):  # *
+def smiles_2_mols(smiles:Iterable[str]) -> List[Chem.rdchem.Mol]:  # *
     """Generates rdkit Mol objects from SMILES strings.
 
     Args:
-        smiles (iter[str]): Contains SMILES strings.
+        smiles (Iterable[str]): Contains SMILES strings.
 
     Returns:
-        list[rdkit Mol]: Contains RDKit Mols.
+        List[Chem.rdchem.Mol]: Contains RDKit Mols.
     """
     return [Chem.MolFromSmiles(smile) for smile in smiles]
 
@@ -36,19 +38,19 @@ def mols_2_inchi_keys(mols):  # *
     """
     return [Chem.MolToInchiKey(mol) for mol in mols]
 
-def smiles_2_inchi_keys(smiles):  # *
+def smiles_2_inchi_keys(smiles:Iterable[str]) -> List[str]:  # *
     """Generates InChI key strings from SMILES strings.
 
     Args:
-        smiles (iter[str]): Contains SMILES strings.
+        smiles (Iterable[str]): Contains SMILES strings.
 
     Returns:
-        list[str]: Contains InChI key strings.
+        List[str]: Contains InChI key strings.
     """
-    mols = smiles_2_mols(smiles)
-    return mols_2_inchi_keys(mols)
+    return mols_2_inchi_keys(smiles_2_mols(smiles))
 
-def mols_2_ecfp(mols, radius=2, return_numpy=False, n_bits=1024):
+def mols_2_ecfp(mols:Iterable[Chem.rdchem.Mol], radius:int=2, return_numpy:bool=False,
+                n_bits:int=1024) -> List[Union[np.array, DataStructs.cDataStructs.UIntSparseIntVect]]:
     """Converts from rdkit mol objects to morgan fingerprints (full ECFP6).
 
     :param mols: Collection of mols
@@ -70,7 +72,7 @@ def mols_2_ecfp(mols, radius=2, return_numpy=False, n_bits=1024):
     else:
         return [AllChem.GetMorganFingerprint(m, radius) for m in mols]
 
-def mols_2_maccs(mols):
+def mols_2_maccs(mols:Iterable[Chem.rdchem.Mol]) -> List[DataStructs.cDataStructs.ExplicitBitVect]:
     """Converts from mol objects to MACCS keys.
 
     :param mols: Collection of molecules
@@ -79,3 +81,9 @@ def mols_2_maccs(mols):
     :rtype: list[rdkit BitVect]
     """
     return [MACCSkeys.GenMACCSKeys(m) for m in mols]
+
+def mols_2_ecfp_plus_descriptors(mols:Iterable[Chem.rdchem.Mol], other_df:pd.DataFrame, z_norm:bool=True,
+                          ecfp_radius:int=2) -> np.array:
+    ecfp_X = mols_2_ecfp(mols, radius=ecfp_radius, return_numpy=True)
+    other_X = z_norm(other_df).to_numpy() if z_norm else other_df.to_numpy()
+    return np.concatenate((ecfp_X, other_X), axis=1)
