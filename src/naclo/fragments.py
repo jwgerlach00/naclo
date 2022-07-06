@@ -2,7 +2,6 @@ from rdkit import Chem
 from rdkit.Chem.Descriptors import ExactMolWt
 from naclo import mol_stats
 from rdkit.Chem.SaltRemover import SaltRemover
-import numpy as np
 
 
 def mw(smile):  # *

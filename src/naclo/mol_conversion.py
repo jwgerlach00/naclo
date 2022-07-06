@@ -3,6 +3,7 @@ import numpy as np
 from rdkit.Chem import AllChem, MACCSkeys, DataStructs
 from typing import Iterable, List, Union
 import pandas as pd
+from stse.dataframes import z_norm as stse_z_norm
 
 
 def mols_2_smiles(mols:Iterable[Chem.rdchem.Mol]) -> List[str]:  # *
@@ -85,5 +86,5 @@ def mols_2_maccs(mols:Iterable[Chem.rdchem.Mol]) -> List[DataStructs.cDataStruct
 def mols_2_ecfp_plus_descriptors(mols:Iterable[Chem.rdchem.Mol], other_df:pd.DataFrame, z_norm:bool=True,
                           ecfp_radius:int=2) -> np.array:
     ecfp_X = mols_2_ecfp(mols, radius=ecfp_radius, return_numpy=True)
-    other_X = z_norm(other_df).to_numpy() if z_norm else other_df.to_numpy()
+    other_X = stse_z_norm(other_df).to_numpy() if z_norm else other_df.to_numpy()
     return np.concatenate((ecfp_X, other_X), axis=1)

@@ -68,6 +68,16 @@ class TestMolConversion(unittest.TestCase):
             maccss[0],
             DataStructs.cDataStructs.ExplicitBitVect
         )
+        
+    def test_mols_2_ecfp_plus_descriptors(self):
+        other_df = pd.DataFrame({
+            'other1': [1, 3, 9, 22],
+            'other2': [0.4, 0.77, 0.9, 0.01]
+        })
+        
+        # Z norm
+        out = mol_conversion.mols_2_ecfp_plus_descriptors(self.sdf_mols, other_df)
+        print(out)
 
 
 if __name__ == '__main__':
