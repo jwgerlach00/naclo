@@ -77,7 +77,6 @@ class TestMolConversion(unittest.TestCase):
         
         # Z norm
         out = mol_conversion.mols_2_ecfp_plus_descriptors(self.sdf_mols, other_df)
-        print(out)
 
 
 if __name__ == '__main__':
