@@ -42,6 +42,8 @@ class UnitConverter:
             'mg/ml',
             'm/ml'
         ]
+        
+        self.__standardize_units()
     
     @staticmethod
     def __neg_log(val:Union[int, float, np.number]) -> float:
@@ -74,19 +76,14 @@ class UnitConverter:
         self.df[self.__standard_unit_col] = standard_units
         self.df[self.__multiplier_col] = multipliers
             
-    def __standardized_checker(self) -> None:
-        """Runs self.__standardize_units if columns have not been appended to self.df."""
-        if 'standard_unit' not in self.df.columns or 'multiplier' not in self.df.columns:
-            self.__standardize_units()
-            
-    def __to_molar_broadcaster(self, row:pd.Series) -> Union[float, np.nan]:
+    def __to_molar_broadcaster(self, row:pd.Series) -> float:
         """Broadcasting function to use with pd.DataFrame.apply(). Computes molar values from self.df.
 
         Args:
             row (pd.Series): pd.DataFrame row passed in apply().
 
         Returns:
-            Union[float, np.nan]: Molar value. np.nan if the standard unit is not found in self.molar or self.g_ovr_l.
+            Union[float]: Molar value. np.nan if the standard unit is not found in self.molar or self.g_ovr_l.
         """
         if row[self.__standard_unit_col] in self.molar:
             molar_val = float(row[self.__value_col])*row[self.__multiplier_col]
@@ -110,5 +107,4 @@ class UnitConverter:
         Returns:
             pd.Series: Negative log molar values.
         """
-        self.__standardized_checker()
         return self.to_molar().apply(self.__neg_log)
