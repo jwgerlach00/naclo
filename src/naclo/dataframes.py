@@ -10,10 +10,10 @@ from naclo.Writer import Writer
 
 
 def __exception_2_nan(x, func):
-        try:
-            return func(x)
-        except Exception:
-            return np.nan
+    try:
+        return func(x)
+    except Exception:
+        return np.nan
     
 
 def df_smiles_2_mols(df, smiles_name, mol_name, dropna=True):  # *
