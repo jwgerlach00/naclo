@@ -80,3 +80,6 @@ class TestUnitConverter(unittest.TestCase):
                 equal_nan=True
             )
         )
+        
+if __name__ == '__main__':
+    unittest.main()
