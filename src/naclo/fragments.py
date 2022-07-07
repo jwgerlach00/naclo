@@ -1,7 +1,10 @@
 from rdkit import Chem
 from rdkit.Chem.Descriptors import ExactMolWt
-from naclo import mol_stats
 from rdkit.Chem.SaltRemover import SaltRemover
+import numpy as np
+
+from naclo import mol_stats
+from naclo.__asset_loader import recognized_salts
 
 
 def mw(smile):  # *
@@ -44,7 +47,7 @@ def atom_count(smile):  # *
 
     return fragments[max_index]
 
-def carbon_count(smile):  # *
+def carbon_count(smile:str) -> str:  # *
     """Removes smaller fragments from a SMILES string by carbon count.
 
     Args:
@@ -63,6 +66,20 @@ def carbon_count(smile):  # *
     max_index = carbon_counts.index(max_carbon_count)
     
     return fragments[max_index]
+
+def remove_recognized_salts(smile:str) -> str:
+    """Removes smiles fragments that are found in assets/recognized_salts.json. Salts sourced from:
+    https://github.com/chembl/ChEMBL_Structure_Pipeline/blob/master/chembl_structure_pipeline/data/salts.smi
+
+    Args:
+        smile (str): Molecule SMILES structure.
+
+    Returns:
+        str: SMILES with salts removed. Could be empty string if all fragments are recognized salts.
+    """
+    fragments = smile.split('.')
+    fragments = [f for f in fragments if f not in recognized_salts['smiles']]
+    return '.'.join(fragments)
 
 def remove_salts(mols, salts='[Cl,Br]'):  # *
     """Removes salts from iterable.

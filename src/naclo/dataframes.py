@@ -2,10 +2,10 @@ from rdkit import Chem
 from warnings import warn
 from rdkit.Chem import PandasTools
 import pandas as pd
-from typing import Union
+from typing import Optional
 import numpy as np
 
-# Nested imports
+# Nested imports (not present in __init__)
 from naclo.Writer import Writer
 
 
@@ -76,7 +76,7 @@ def write_sdf(df, out_path, mol_col_name, id_column_name='RowID'):  # *
         PandasTools.WriteSDF(df, out_path, molColName=mol_col_name, properties=df.columns, idName='RowID')
         warn(f'write_sdf \'{id_column_name}\' ID name invalid', UserWarning)
 
-def id_mol_col(df:pd.DataFrame) -> Union[None, pd.Index]:
+def id_mol_col(df:pd.DataFrame) -> Optional[pd.Index]:
     """Identifies first column that contains a Mol object based on first row.
 
     Args:

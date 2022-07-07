@@ -9,7 +9,6 @@ from naclo import dataframes
 from naclo import fragments
 from naclo import neutralize
 from naclo import rdpickle
-from naclo import visualization
 from naclo.Bleach import Bleach
 from naclo.__asset_loader import bleach_default_params, bleach_default_options
 from naclo.UnitConverter import UnitConverter

@@ -49,7 +49,21 @@ class TestFragments(unittest.TestCase):
             mols_2_smiles(frag.remove_salts(smiles_2_mols(['CCCCl']))),
             ['CCCCl']
         )
-
+        
+    def test_remove_recognized_salts(self):
+        test_smiles = [
+            'NC(CO)(CO)CO.CCC',
+            'CCC',
+            '[Ra].CCC'
+        ]
+        
+        expected = 3*['CCC']
+        out = [frag.remove_recognized_salts(s) for s in test_smiles]
+        
+        self.assertEqual(
+            out,
+            expected
+        )
 
 if __name__ == '__main__':
     unittest.main()

@@ -13,3 +13,6 @@ with resources.open_text('naclo.assets', 'recognized_bleach_options.json') as f:
 
 with resources.open_text('naclo.assets', 'recognized_units.json') as f:
     recognized_units = json.load(f)
+
+with resources.open_text('naclo.assets', 'recognized_salts.json') as f:
+    recognized_salts = json.load(f)
