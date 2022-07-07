@@ -2,8 +2,6 @@ import numpy as np
 from typing import Iterable, Union, Optional
 from copy import copy
 
-from naclo import UnitConverter
-
 
 class MolarBinarizer:
     def __init__(self, molar_vals:Iterable, molar_boundary:Union[float, int, np.number],
