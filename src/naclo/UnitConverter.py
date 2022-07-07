@@ -1,7 +1,7 @@
 from math import log10
 import pandas as pd
 import numpy as np
-from copy import deepcopy
+from copy import copy
 from typing import Union, Iterable
 
 from naclo.__asset_loader import recognized_units
@@ -17,9 +17,9 @@ class UnitConverter:
         self.__multiplier_col = 'multiplier'
         
         self.df = pd.DataFrame({
-            self.__unit_col: deepcopy(units),
-            self.__value_col: deepcopy(values),
-            self.__mw_col: deepcopy(mol_weights)
+            self.__unit_col: copy(units),
+            self.__value_col: copy(values),
+            self.__mw_col: copy(mol_weights)
         })
         
         # Unit groups

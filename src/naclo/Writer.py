@@ -21,7 +21,7 @@ class Writer:
         error_checking.type_check('mol_col_name', mol_col_name, [str])
         
         # Set properties
-        self.df = df
+        self.df = df.copy()
         self.mol_col_name = mol_col_name
         
     def write(self, out:Union[str, BytesIO], ext:str) -> None:
