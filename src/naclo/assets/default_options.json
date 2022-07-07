@@ -4,7 +4,7 @@
             "run": true
         },
         "remove_fragments": {
-            "salts": "Cl,Br",
+            "salts": true,
             "filter_method": "carbon_count"
         }
     },

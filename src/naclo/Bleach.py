@@ -6,10 +6,12 @@ from typing import Callable
 import naclo
 import stse
 from naclo.__asset_loader import recognized_bleach_options as recognized_options
+from naclo.__asset_loader import bleach_default_params as default_params
+from naclo.__asset_loader import bleach_default_options as default_options
 
 
 class Bleach:
-    def __init__(self, df:pd.DataFrame, params:dict, options:dict) -> None:  # *
+    def __init__(self, df:pd.DataFrame, params:dict=default_params, options:dict=default_options) -> None:  # *
         # Load user options
         self.mol_settings = options['molecule_settings']
         self.file_settings = options['file_settings']
@@ -155,10 +157,14 @@ class Bleach:
         option = self.mol_settings['remove_fragments']
 
         # Remove salts
+        # if option['salts']:
+        #     self.df[self.mol_col] = naclo.fragments.remove_salts(self.df[self.mol_col], salts='[{0}]'.format(
+        #         option['salts'].replace(' ', '')))
+        #     self.__build_smiles()
+            
         if option['salts']:
-            self.df[self.mol_col] = naclo.fragments.remove_salts(self.df[self.mol_col], salts='[{0}]'.format(
-                option['salts'].replace(' ', '')))
-            self.__build_smiles()
+            self.df[self.smiles_col] = self.df[self.smiles_col].apply(naclo.fragments.remove_recognized_salts)
+            self.__build_mols()
 
             # Drop NA (blank string after salts)
             self.df = stse.dataframes.convert_to_nan(self.df, na=[''])  # Convert bc NA is just empty string

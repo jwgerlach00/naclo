@@ -261,7 +261,7 @@ class TestBleach(unittest.TestCase):
         )
         
         # Filters only
-        options['molecule_settings']['remove_fragments']['salts'] = ''
+        options['molecule_settings']['remove_fragments']['salts'] = False
         
         # Carbon count
         options['molecule_settings']['remove_fragments']['filter_method'] = 'carbon_count'
@@ -297,7 +297,7 @@ class TestBleach(unittest.TestCase):
         )
         
         # Salts + filter together
-        options['molecule_settings']['remove_fragments']['salts'] = 'Cl,Br'
+        options['molecule_settings']['remove_fragments']['salts'] = True
         options['molecule_settings']['remove_fragments']['filter_method'] = 'carbon_count'
         
         bleach = Bleach(self.smiles_df, params, options)
