@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='naclo',
-    version='0.1.77',
+    version='0.1.78',
     license='MIT',
     author='Jacob Gerlach',
     author_email='jwgerlach00@gmail.com',
@@ -13,7 +13,9 @@ setup(
     package_dir={'': 'src'},
     package_data={'naclo': ['assets/default_params.json',
                             'assets/default_options.json',
-                            'assets/recognized_bleach_options.json']},
+                            'assets/recognized_bleach_options.json',
+                            'assets/recognized_units.json',
+                            'assets/recognized_salts.json']},
     python_requires='>=3.6',
     install_requires=[
         'numpy',
