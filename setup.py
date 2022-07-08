@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='naclo',
-    version='0.1.76',
+    version='0.1.77',
     license='MIT',
     author='Jacob Gerlach',
     author_email='jwgerlach00@gmail.com',
@@ -18,7 +18,9 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
+        'rdkit',
         'rdkit_pypi',
+        'setuptools',
         'stse'
     ],
 )
