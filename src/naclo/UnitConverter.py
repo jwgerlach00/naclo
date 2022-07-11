@@ -12,7 +12,7 @@ class UnitConverter:
         # Column names
         self.__unit_col = 'unit'
         self.__value_col = 'value'
-        self.__mw_col = 'mol_weights'
+        self.__mw_col = 'mol_weight'
         self.__standard_unit_col = 'standard_unit'
         self.__multiplier_col = 'multiplier'
         

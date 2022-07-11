@@ -39,11 +39,13 @@ class TestDataframes(unittest.TestCase):
     def test_df_smiles_2_mols(self):
          # Test with dropna
         out1 = dataframes.df_smiles_2_mols(self.mol_test_df, 'SMILES', 'ROMol')
-        assert out1.ROMol.map(Chem.MolToSmiles, na_action='ignore').equals(self.mol_test_df.Molecule.map(Chem.MolToSmiles, na_action='ignore').dropna())
+        assert out1.ROMol.map(Chem.MolToSmiles, na_action='ignore').equals(
+            self.mol_test_df.Molecule.map(Chem.MolToSmiles, na_action='ignore').dropna())
         
         # Test without dropna
         out2 = dataframes.df_smiles_2_mols(self.mol_test_df, 'SMILES', 'ROMol', dropna=False)
-        assert out2.ROMol.map(Chem.MolToSmiles, na_action='ignore').equals(self.mol_test_df.Molecule.map(Chem.MolToSmiles, na_action='ignore'))
+        assert out2.ROMol.map(Chem.MolToSmiles, na_action='ignore').equals(
+            self.mol_test_df.Molecule.map(Chem.MolToSmiles, na_action='ignore'))
     
     def test_df_mols_2_inchi_keys(self):
         # Test with dropna

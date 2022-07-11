@@ -10,6 +10,8 @@ from naclo import fragments
 from naclo import neutralize
 from naclo import rdpickle
 from naclo.Bleach import Bleach
+from naclo.Binarize import Binarize
 from naclo.__asset_loader import bleach_default_params, bleach_default_options
+from naclo.__asset_loader import binarize_default_params, binarize_default_options
 from naclo.UnitConverter import UnitConverter
 from naclo.MolarBinarizer import MolarBinarizer
