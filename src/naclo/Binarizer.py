@@ -1,4 +1,4 @@
-from cmath import nan
+
 import numpy as np
 from typing import Iterable, Union, Optional
 from copy import copy

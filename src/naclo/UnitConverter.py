@@ -8,13 +8,15 @@ from naclo.__asset_loader import recognized_units
 
 
 class UnitConverter:
+    __recognized_units = copy(recognized_units)
+    __standard_unit_col = 'standard_unit'
+    __multiplier_col = 'multiplier'
+    
     def __init__(self, values:Iterable, units:Iterable, mol_weights:Iterable) -> None:
         # Column names
         self.__unit_col = 'unit'
         self.__value_col = 'value'
         self.__mw_col = 'mol_weight'
-        self.__standard_unit_col = 'standard_unit'
-        self.__multiplier_col = 'multiplier'
         
         self.df = pd.DataFrame({
             self.__unit_col: copy(units),
@@ -43,7 +45,7 @@ class UnitConverter:
             'm/ml'
         ]
         
-        self.__standardize_units()
+        self.df = UnitConverter.standardize_units(self.df, self.__unit_col)
     
     @staticmethod
     def __neg_log(val:Union[int, float, np.number]) -> float:
@@ -57,15 +59,16 @@ class UnitConverter:
         """
         return -1*log10(val)
     
-    def __standardize_units(self) -> None:
+    @staticmethod
+    def standardize_units(df, unit_col_name) -> pd.DataFrame:
         """Appends standard units and multipliers found in naclo/assets/recognized_units.json to self.df. Appends
         np.nan if unit is not recognized."""
         standard_units = []
         multipliers = []
         
-        for unit in self.df[self.__unit_col]:
+        for unit in df[unit_col_name]:
             try:
-                standard_unit, multiplier = recognized_units[f'{unit}'.lower()]
+                standard_unit, multiplier = UnitConverter.__recognized_units[f'{unit}'.lower()]
                 standard_units.append(standard_unit)
                 multipliers.append(multiplier)
             except KeyError:
@@ -73,8 +76,9 @@ class UnitConverter:
                 multipliers.append(np.nan)
                 continue
             
-        self.df[self.__standard_unit_col] = standard_units
-        self.df[self.__multiplier_col] = multipliers
+        df[UnitConverter.__standard_unit_col] = standard_units
+        df[UnitConverter.__multiplier_col] = multipliers
+        return df
             
     def __to_molar_broadcaster(self, row:pd.Series) -> float:
         """Broadcasting function to use with pd.DataFrame.apply(). Computes molar values from self.df.
