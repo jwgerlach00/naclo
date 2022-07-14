@@ -402,11 +402,12 @@ class TestBleach(unittest.TestCase):
         bleach.init_structure_compute()
         bleach.mol_cleanup()
         bleach.handle_duplicates()
-        bleach.append_columns()
+        df_out = bleach.append_columns(bleach.df, bleach.file_settings['append_columns'], bleach.mol_col,
+                                       bleach.smiles_col, bleach.inchi_key_col)
         
         self.assertEqual(
             ['SMILES', 'ROMol', 'InchiKey', 'MW'],
-            list(bleach.df.columns)
+            list(df_out.columns)
         )
         
         # No columns (except SMILES for testing purposes)
@@ -423,11 +424,12 @@ class TestBleach(unittest.TestCase):
         bleach.init_structure_compute()
         bleach.mol_cleanup()
         bleach.handle_duplicates()
-        bleach.append_columns()
+        df_out = bleach.append_columns(bleach.df, bleach.file_settings['append_columns'], bleach.mol_col,
+                                       bleach.smiles_col, bleach.inchi_key_col)
         
         self.assertEqual(
             ['SMILES'],
-            list(bleach.df.columns)
+            list(df_out.columns)
         )
         
     def test_remove_header_chars(self):

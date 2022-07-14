@@ -1,6 +1,6 @@
 import pandas as pd
 import warnings
-from typing import Callable
+from typing import Callable, Dict
 
 # sourced from github.com/jwgerlach00
 import naclo
@@ -186,25 +186,27 @@ class Bleach:
         self.inchi_key_col = self.__default_cols['inchi_key']
         self.df = naclo.dataframes.df_mols_2_inchi_keys(self.df, self.mol_col, self.inchi_key_col)
 
-    def __drop_columns(self) -> None:
+    @staticmethod
+    def __drop_columns(df:pd.DataFrame, column_mapper:Dict[str, bool], mol_col_name:str, smiles_col_name:str,
+                       inchi_key_col_name:str) -> pd.DataFrame:
         """Removes columns that the user does not want in the final output."""
-        option = self.file_settings['append_columns']
-
         # Drop added columns from built if not requested
-        if not option['mol']:
-            self.df.drop(self.mol_col, inplace=True, axis=1)
-        if not option['inchi_key']:
-            self.df.drop(self.inchi_key_col, inplace=True, axis=1)
-        if not option['smiles']:
-            self.df.drop(self.smiles_col, inplace=True, axis=1)
-
-    def __add_columns(self) -> None:
-        """Add columns that the user wants in the final output."""
-        option = self.file_settings['append_columns']
+        if not column_mapper['mol']:
+            df.drop(mol_col_name, inplace=True, axis=1)
+        if not column_mapper['inchi_key']:
+            df.drop(inchi_key_col_name, inplace=True, axis=1)
+        if not column_mapper['smiles']:
+            df.drop(smiles_col_name, inplace=True, axis=1)
         
+        return df
+
+    @staticmethod
+    def __add_columns(df:pd.DataFrame, column_mapper:Dict[str, bool], mol_col_name:str) -> pd.DataFrame:
+        """Add columns that the user wants in the final output."""
         # Add MW column
-        if option['mw']:
-            self.df = self.df.assign(MW = naclo.mol_weights(self.df[self.mol_col]))
+        if column_mapper['mw']:
+            df = df.assign(MW = naclo.mol_weights(df[mol_col_name]))
+        return df
 
 
 # ------------------------------------------------- PUBLIC FUNCTIONS ------------------------------------------------- #
@@ -257,21 +259,24 @@ class Bleach:
             self.df = stse.duplicates.remove(self.df, subsets=[self.inchi_key_col])
 
     # Step 5
-    def append_columns(self) -> None:  # *
+    @staticmethod
+    def append_columns(df:pd.DataFrame, column_mapper:Dict[str, bool], mol_col_name:str, smiles_col_name:str,
+                       inchi_key_col_name:str) -> pd.DataFrame:  # *
         """Drops and adds columns depending on what the user wants returned.
 
         Args:
             df (pandas DataFrame): Data to transform
         """
-        self.__drop_columns()
-        self.__add_columns()
+        df = Bleach.__drop_columns(df, column_mapper, mol_col_name, smiles_col_name, inchi_key_col_name)
+        df = Bleach.__add_columns(df, column_mapper, mol_col_name)
+        return df
 
     # Step 6
-    def remove_header_chars(self) -> None:  # *
+    @staticmethod
+    def remove_header_chars(df, chars) -> pd.DataFrame:  # *
         """Removes any chars listed in a string of chars from the df column headers.
         """
-        chars = self.file_settings['remove_header_chars']['chars']
-        self.df = stse.dataframes.remove_header_chars(self.df, chars)
+        return stse.dataframes.remove_header_chars(df, chars)
 
 
 # ----------------------------------------------------- MAIN LOOP ---------------------------------------------------- #
@@ -285,7 +290,8 @@ class Bleach:
         self.init_structure_compute()
         self.mol_cleanup()
         self.handle_duplicates()  # Includes InchiKey generation
-        self.append_columns()
-        self.remove_header_chars()
+        self.df = self.append_columns(self.df, self.file_settings['append_columns'], self.mol_col, self.smiles_col,
+                                      self.inchi_key_col)
+        self.df = self.remove_header_chars(self.df, self.file_settings['remove_header_chars']['chars'])
         
         return self.df

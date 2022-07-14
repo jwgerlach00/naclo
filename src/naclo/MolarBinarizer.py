@@ -13,7 +13,7 @@ class MolarBinarizer:
     
     @staticmethod
     @np.vectorize
-    def __bin_molar_qualifiers(molar_val:Union[int, float, np.number], molar_boundary:Union[int, float, np.number],
+    def bin_molar_qualifiers(molar_val:Union[int, float, np.number], molar_boundary:Union[int, float, np.number],
                                relation:str, active_boundary_cond:bool=True) -> Union[int, float]:
         """Categorizes a molarity as active or inactive using qualifiers. Molarity is considered active when it is below
         a threshold suggesting that less compound is required to obtain a response.
@@ -45,7 +45,7 @@ class MolarBinarizer:
     
     @staticmethod
     @np.vectorize
-    def __bin_molar_no_qualifiers(molar_val, molar_boundary, active_boundary_cond):
+    def bin_molar_no_qualifiers(molar_val, molar_boundary, active_boundary_cond):
         if molar_val == molar_boundary:
             return 1 if active_boundary_cond else 0
         else:
@@ -53,9 +53,9 @@ class MolarBinarizer:
     
     def binarize(self) -> np.array:
         if self.__molar_qualifiers:
-            return self.__bin_molar_qualifiers(molar_val=self.__molar_vals, molar_boundary=self.__molar_boundary,
+            return self.bin_molar_qualifiers(molar_val=self.__molar_vals, molar_boundary=self.__molar_boundary,
                                                relation=self.__molar_qualifiers,
                                                active_boundary_cond=self.__active_boundary_cond)
         else:
-            return self.__bin_molar_no_qualifiers(molar_val=self.__molar_vals, molar_boundary=self.__molar_boundary,
+            return self.bin_molar_no_qualifiers(molar_val=self.__molar_vals, molar_boundary=self.__molar_boundary,
                                                   active_boundary_cond=self.__active_boundary_cond)
