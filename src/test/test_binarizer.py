@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from naclo import MolarBinarizer
+from naclo import Binarizer
 
 
 class TestBinarize(unittest.TestCase):
@@ -24,9 +24,9 @@ class TestBinarize(unittest.TestCase):
         
         cls.molar_boundary = 10
         
-        cls.qualifier_binarizer = MolarBinarizer(molar_vals=cls.test_values, molar_boundary=cls.molar_boundary,
-                                                 molar_qualifiers=cls.molar_qualifiers)
-        cls.no_qualifier_binarizer = MolarBinarizer(molar_vals=cls.test_values, molar_boundary=cls.molar_boundary)
+        cls.qualifier_binarizer = Binarizer(values=cls.test_values, boundary=cls.molar_boundary,
+                                                 qualifiers=cls.molar_qualifiers)
+        cls.no_qualifier_binarizer = Binarizer(values=cls.test_values, boundary=cls.molar_boundary)
         return super().setUpClass()
     
     def test_binarize(self):

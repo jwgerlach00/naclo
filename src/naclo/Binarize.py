@@ -54,9 +54,9 @@ class Binarize:
         else:
             qualifiers = None
             
-        molar_binarizer = naclo.MolarBinarizer(molar_vals=values,
-                                               molar_boundary=self.__decision_boundary,
-                                               molar_qualifiers=qualifiers,
+        molar_binarizer = naclo.Binarizer(values=values,
+                                               boundary=self.__decision_boundary,
+                                               qualifiers=qualifiers,
                                                active_boundary_cond=self.__options['active_boundary_cond'])
         return molar_binarizer.binarize()
     

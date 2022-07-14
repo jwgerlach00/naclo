@@ -1,6 +1,6 @@
 import pandas as pd
 import warnings
-from typing import Callable, Dict
+from typing import Callable, Dict, Union
 
 # sourced from github.com/jwgerlach00
 import naclo
@@ -181,10 +181,10 @@ class Bleach:
         self.df[self.mol_col] = naclo.neutralize.neutralize_charges(self.df[self.mol_col])
         self.__build_smiles
 
-    def __compute_inchi_keys(self) -> None:
+    @staticmethod
+    def __append_inchi_keys(df:pd.DataFrame, mol_col_name:str, inchi_key_col_name:str) -> pd.DataFrame:
         """Declares inchi key column name using default. Appends inchi keys to dataset."""
-        self.inchi_key_col = self.__default_cols['inchi_key']
-        self.df = naclo.dataframes.df_mols_2_inchi_keys(self.df, self.mol_col, self.inchi_key_col)
+        return naclo.dataframes.df_mols_2_inchi_keys(df, mol_col_name, inchi_key_col_name)
 
     @staticmethod
     def __drop_columns(df:pd.DataFrame, column_mapper:Dict[str, bool], mol_col_name:str, smiles_col_name:str,
@@ -247,16 +247,17 @@ class Bleach:
             self.__neutralize_charges()
 
     # Step 4
-    def handle_duplicates(self):  # *
+    @staticmethod
+    def handle_duplicates(df:pd.DataFrame, mol_col_name:str, inchi_key_col_name:str, target_col:Union[str, None]=None,
+                          method='average') -> pd.DataFrame:  # *
         """Computes inchi keys. Averages, removes, or keeps duplicates. ONLY BY INCHI KEY FOR NOW."""
-        self.__compute_inchi_keys()
+        Bleach.__append_inchi_keys(df, mol_col_name, inchi_key_col_name)
 
-        dup = self.file_settings['duplicate_compounds']
-
-        if dup['selected'] == 'average' and self.target_col:
-            self.df = stse.duplicates.average(self.df, subsets=[self.inchi_key_col], average_by=self.target_col)
-        elif dup['selected'] == 'remove' or (dup['selected'] == 'average' and not self.target_col):
-            self.df = stse.duplicates.remove(self.df, subsets=[self.inchi_key_col])
+        if method == 'average' and target_col:
+            df = stse.duplicates.average(df, subsets=[inchi_key_col_name], average_by=target_col)
+        elif method == 'remove' or (method == 'average' and not target_col):
+            df = stse.duplicates.remove(df, subsets=[inchi_key_col_name])
+        return df
 
     # Step 5
     @staticmethod
@@ -289,7 +290,8 @@ class Bleach:
         self.drop_na()  # Before init_structure bc need NA
         self.init_structure_compute()
         self.mol_cleanup()
-        self.handle_duplicates()  # Includes InchiKey generation
+        self.df = self.handle_duplicates(self.df, self.mol_col, self.inchi_key_col, self.target_col,
+                                         method=self.file_settings['duplicate_compounds'])  # Generates InchiKeys
         self.df = self.append_columns(self.df, self.file_settings['append_columns'], self.mol_col, self.smiles_col,
                                       self.inchi_key_col)
         self.df = self.remove_header_chars(self.df, self.file_settings['remove_header_chars']['chars'])
