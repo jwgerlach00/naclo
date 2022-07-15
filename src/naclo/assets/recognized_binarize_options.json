@@ -1,0 +1,13 @@
+{
+    "handle_duplicates": [true, false],
+    "convert_units": {
+        "run": [true, false],
+        "units_col": "",
+        "output_units": ""
+    },
+    "qualifiers": {
+        "run": [true, false],
+        "qualifier_col": ""
+    },
+    "active_operator": [">", "<", ">=", "<="]
+}

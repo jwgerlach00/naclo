@@ -15,7 +15,7 @@ class Bleach:
         # Load user options
         self.mol_settings = options['molecule_settings']
         self.file_settings = options['file_settings']
-        self.__recognized_options_checker()
+        naclo.__naclo_util.recognized_options_checker(options, recognized_options)
 
         self.__recognized_structures = ['smiles', 'mol']
         self.__default_cols = {
@@ -42,31 +42,6 @@ class Bleach:
 
 
 # -------------------------------------------------- ERROR CHECKING -------------------------------------------------- #
-    def __recognized_options_checker(self) -> None:  # *
-        """Checks for errors related to unrecognized option assignments.
-
-        Raises:
-            ValueError: BAD_OPTION(S)
-        """
-        input = stse.dictionaries.branches({
-            'molecule_settings': self.mol_settings,
-            'file_settings': self.file_settings
-        })
-        recognized = stse.dictionaries.branches(recognized_options)
-
-        errors = {}
-        for key, value in recognized.items():
-            if isinstance(value, list):
-                if not input[key] in recognized[key]:
-                    errors[f'BAD_OPTION{key.upper()}'] = f'"{input[key]}" is not an accepted value for "{key}", set \
-                        to one of: "{recognized[key]}"'
-            else:
-                if not type(input[key]) == type(recognized[key]):
-                    errors[f'BAD_OPTION{key.upper()}'] = f'{type(input[key])} is not an accepted type for {key}, \
-                        input a {type(recognized[key])}'
-        if errors:
-            raise ValueError(errors)
-
     def __param_checker(self) -> None:  # *
         """Checks for errors related to declared parameters.
 

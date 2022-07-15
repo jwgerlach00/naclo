@@ -1,5 +1,7 @@
 import warnings
 
+import stse
+
 
 def drop_na_structures(self) -> None:
         """Drops NA along declared structure column."""
@@ -21,3 +23,20 @@ def drop_na_targets(self) -> None:
     elif run_na_targets:  # If run but not declared target
         warnings.warn('NA_TARGETS: options.file_settings.remove_na_targets was set to run but no activity column \
             was specified', RuntimeWarning)
+        
+def recognized_options_checker(input_options, recognized_options) -> None:  # *
+    input = stse.dictionaries.branches(input_options)
+    recognized = stse.dictionaries.branches(recognized_options)
+
+    errors = {}
+    for key, value in recognized.items():
+        if isinstance(value, list):
+            if not input[key] in recognized[key]:
+                errors[f'BAD_OPTION{key.upper()}'] = f'"{input[key]}" is not an accepted value for "{key}", set \
+                    to one of: "{recognized[key]}"'
+        else:
+            if not type(input[key]) == type(recognized[key]):
+                errors[f'BAD_OPTION{key.upper()}'] = f'{type(input[key])} is not an accepted type for {key}, \
+                    input a {type(recognized[key])}'
+    if errors:
+        raise ValueError(errors)

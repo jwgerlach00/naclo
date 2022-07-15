@@ -16,6 +16,9 @@ with resources.open_text('naclo.assets', 'binarize_default_options.json') as f:
 
 with resources.open_text('naclo.assets', 'recognized_bleach_options.json') as f:
     recognized_bleach_options = json.load(f)
+    
+with resources.open_text('naclo.assets', 'recognized_binarize_options.json') as f:
+    recognized_binarize_options = json.load(f)
 
 with resources.open_text('naclo.assets', 'recognized_units.json') as f:
     recognized_units = json.load(f)
