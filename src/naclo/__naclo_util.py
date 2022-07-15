@@ -40,3 +40,9 @@ def recognized_options_checker(input_options, recognized_options) -> None:  # *
                     input a {type(recognized[key])}'
     if errors:
         raise ValueError(errors)
+    
+def check_columns_in_df(df, columns) -> None:
+    """Checks that all columns in columns are in df"""
+    for column in columns:
+        if column not in df.columns:
+            raise ValueError(f'Column: "{column}" is not found in data.')

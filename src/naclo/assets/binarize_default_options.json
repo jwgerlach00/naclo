@@ -3,7 +3,7 @@
     "convert_units": {
         "run": false,
         "units_col": "",
-        "output_units": ""
+        "output_units": "molar"
     },
     "qualifiers": {
         "run": false,

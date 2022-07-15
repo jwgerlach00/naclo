@@ -15,7 +15,8 @@ class Binarizer:
         self.__qualifiers = copy(qualifiers)
     
     @staticmethod
-    def __equals_edge_case(relation:str, active_operator:str, nan_greater_equal:bool=True) -> Union[int, float]:
+    def __equals_edge_case(relation:Optional[str], active_operator:str,
+                           nan_greater_equal:bool=True) -> Union[int, float]:
         """Binarization handler for when value == threshold.
 
         Args:
@@ -68,33 +69,32 @@ class Binarizer:
         """
         
         greater_than_bound = None
-        qualifier_conflict = False
         
-        while not qualifier_conflict:
-            if value == boundary:
-                return Binarizer.__equals_edge_case(nan_greater_equal=True)
-            
-            elif relation in Binarizer.__less_than:
-                if value < boundary:
-                    greater_than_bound = False
-                else:
-                    qualifier_conflict = True
-                    
-            elif relation in Binarizer.__greater_than:
-                if value > boundary:
-                    greater_than_bound = True
-                else:
-                    qualifier_conflict = True
-                
-            elif relation == '=':
-                greater_than_bound = True if value > boundary else False
-                
+        if np.isnan(value):
+            return np.nan
+        
+        if value == boundary:
+            return Binarizer.__equals_edge_case(relation, active_operator, nan_greater_equal=True)
+        
+        elif relation in Binarizer.__less_than:
+            if value < boundary:
+                greater_than_bound = False
             else:
-                return np.nan  # Unrecognized relation
-        
-            return Binarizer.__active_operator_handler(greater_than_bound, active_operator)
+                return np.nan  # Qualifier conflict
+                
+        elif relation in Binarizer.__greater_than:
+            if value > boundary:
+                greater_than_bound = True
+            else:
+                return np.nan  # Qualifier conflict
 
-        return np.nan  # Qualifier conflict
+        elif relation == '=':
+            greater_than_bound = True if value > boundary else False
+            
+        else:
+            return np.nan  # Unrecognized relation
+    
+        return Binarizer.__active_operator_handler(greater_than_bound, active_operator)
     
     @staticmethod
     @np.vectorize
@@ -111,7 +111,7 @@ class Binarizer:
             Union[int, float]: 1 (active), 0 (inactive), or np.nan special greater than equal edge case.
         """
         if value == boundary:
-            return Binarizer.__equals_edge_case(nan_greater_equal=True)
+            return Binarizer.__equals_edge_case(None, active_operator, nan_greater_equal=True)
         else:
             greater_than_bound = (value > boundary)
             return Binarizer.__active_operator_handler(greater_than_bound, active_operator)

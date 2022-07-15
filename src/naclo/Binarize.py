@@ -1,4 +1,4 @@
-from typing import List
+from typing import Iterable, List
 import pandas as pd
 from copy import copy
 import numpy as np
@@ -6,14 +6,15 @@ import numpy as np
 import naclo
 import stse
 from naclo.__asset_loader import recognized_binarize_options
-
+from naclo.__naclo_util import recognized_options_checker, check_columns_in_df
+from naclo.__for_stse import sync_na_drop
 
 class Binarize:
     def __init__(self, df:pd.DataFrame, params:dict, options:dict) -> None:
         self.df = df.copy()
         
         self.__options = copy(options)
-        naclo.__naclo_util.recognized_options_checker(options, recognized_binarize_options)
+        recognized_options_checker(options, recognized_binarize_options)
         
         # Params
         self.__structure_col = params['structure_col']
@@ -25,6 +26,14 @@ class Binarize:
         self.df = stse.dataframes.convert_to_nan(self.df)
         self.df.dropna(subset=[self.__structure_col], inplace=True)
         self.df.dropna(subset=[self.__target_col], inplace=True)
+        
+        # Check all needed columns exist in df
+        cols_to_check = [self.__structure_col, self.__target_col]
+        if self.__options['convert_units']['run']:
+            cols_to_check.append(self.__options['convert_units']['units_col'])
+        if self.__options['qualifiers']['run']:
+            cols_to_check.append(self.__options['qualifiers']['qualifier_col'])
+        check_columns_in_df(self.df, cols_to_check)
     
     def __mol_weights(self) -> List[float]:
         if self.__structure_type == 'smiles':
@@ -43,17 +52,21 @@ class Binarize:
             return unit_converter.to_neg_log_molar()
         elif output_units == 'molar':
             return unit_converter.to_molar()
+        elif output_units == 'nanomolar':
+            return unit_converter.to_molar()*1e9
         else:
-            raise(ValueError, f'Unrecognized output units: {output_units}')
+            raise ValueError(f'Unrecognized output units: {output_units}')
         
-    def binarize(self, values) -> np.array:
+    def _binarize(self, values:Iterable) -> np.array:
         if self.__options['qualifiers']['run']:
             col = self.__options['qualifiers']['qualifier_col']
-            self.df.dropna(subset=[col], inplace=True)  # Drop NA
+            
+            self.df, values = sync_na_drop(self.df, col, values, all_na=True)
+            
             qualifiers = self.df[col].tolist()
         else:
             qualifiers = None
-            
+        
         molar_binarizer = naclo.Binarizer(values=values, boundary=self.__decision_boundary,
                                           active_operator=self.__options['active_operator'], qualifiers=qualifiers)
         return molar_binarizer.binarize()
@@ -63,10 +76,10 @@ class Binarize:
             # Convert and append units
             output_units = self.__options['convert_units']['output_units']
             converted_values = self.convert_units(output_units).tolist()
-            self.df[f'{output_units}_{self.__target_col}'] = converted_values
             
-            self.df[f'binarized_{self.__target_col}'] = self.binarize(converted_values)
+            self.df[f'{output_units}_{self.__target_col}'] = converted_values
+            self.df[f'binarized_{self.__target_col}'] = self._binarize(converted_values)
         else:
-            self.df[f'binarized_{self.__target_col}'] = self.binarize(self.df[self.__target_col].tolist())
+            self.df[f'binarized_{self.__target_col}'] = self._binarize(self.df[self.__target_col].tolist())
             
         return self.df

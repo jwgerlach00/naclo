@@ -2,6 +2,9 @@ import unittest
 import pandas as pd
 import numpy as np
 from copy import deepcopy
+from rdkit.Chem import MolFromSmiles
+from rdkit.Chem.Descriptors import ExactMolWt
+from math import log10
 
 from naclo import binarize_default_params, binarize_default_options
 from naclo import Binarize
@@ -39,7 +42,7 @@ class TestBinarize(unittest.TestCase):
                 '>',
                 '<',
                 '=',
-                '>',
+                '',
                 '<'
             ]
         })
@@ -54,66 +57,165 @@ class TestBinarize(unittest.TestCase):
     def test_convert_units(self):
         options = deepcopy(self.default_options)
         options['convert_units']['units_col'] = 'units'
+        
+        first_two_rows = self.test_df.iloc[:2]
+        
+        mws = [ExactMolWt(MolFromSmiles(smi)) for smi in first_two_rows['smiles']]
+        targets = first_two_rows['target']
+        conversion_factor = 1e-3  # ug/ml and mg/l are the same
+        
+        first_two_expected = (targets*conversion_factor / mws).tolist()
+        
+        expected_molar = first_two_expected + 2*[np.nan]
+        
         binarize = Binarize(self.test_df, params=self.default_params, options=options)
-        molar = binarize.convert_units()
-        self.fail()
-    
-    def test_binarize(self):
+        
+        # Molar
+        self.assertTrue(
+            np.allclose(
+                binarize.convert_units('molar'),
+                expected_molar, 
+                equal_nan=True
+            )
+        )
+        
+        # -log(Molar)
+        self.assertTrue(
+            np.allclose(
+                binarize.convert_units('neg_log_molar'),
+                [-1*log10(x) for x in expected_molar],
+                equal_nan=True
+            )
+        )
+        
+        # Nanomolar
+        self.assertTrue(
+            np.allclose(
+                binarize.convert_units('nanomolar'),
+                [1e9*x for x in expected_molar],
+                equal_nan=True
+            )
+        )
+        
+        # Unknown units
+        with self.assertRaises(ValueError):
+            binarize.convert_units('unknown')
+        
+    def test_binarize_no_qualifiers(self):
         options = deepcopy(self.default_options)
-        
-        # No qualifiers, active boundary
         options['qualifiers']['run'] = False
-        options['active_boundary_cond'] = True
-        binarize = Binarize(self.test_df, params=self.default_params, options=options)
+        
+        # Loop through allowed operators
+        outs = []
+        for options['active_operator'] in ['>', '<', '>=', '<=']:
+            binarize = Binarize(self.test_df, params=self.default_params, options=options)
+            outs.append(binarize._binarize(self.test_df['target']))
+        
+        expected = {
+            '>': [1, 0, 0, 1, 1],
+            '<': [0, 1, 0, 0, 0],
+            '>=': [1, 0, 1, 1, 1],
+            '<=': [0, 1, 1, 0, 0]
+        }
+        
         self.assertTrue(
             np.array_equal(
-                binarize.binarize(),
-                np.array([0, 1, 1, 0])
+                list(expected.values()),
+                outs
             )
         )
         
-        # No qualifiers, inactive boundary
-        options['qualifiers']['run'] = False
-        options['active_boundary_cond'] = False
-        binarize = Binarize(self.test_df, params=self.default_params, options=options)
-        self.assertTrue(
-            np.array_equal(
-                binarize.binarize(),
-                np.array([0, 1, 0, 0])
-            )
-        )
+        # Unknown operator
+        options['active_operator'] = 'unknown'
+        with self.assertRaises(ValueError):
+            binarize = Binarize(self.test_df, params=self.default_params, options=options)
+            binarize._binarize(self.test_df['target'])
         
-        # Qualifiers, active boundary
+    def test_binarize_with_qualifiers(self):
+        options = deepcopy(self.default_options)
         options['qualifiers']['run'] = True
         options['qualifiers']['qualifier_col'] = 'qualifiers'
-        options['active_boundary_cond'] = True
-        binarize = Binarize(self.test_df, params=self.default_params, options=options)
+        
+        # Loop through allowed operators
+        outs = []
+        for options['active_operator'] in ['>', '<', '>=', '<=']:
+            binarize = Binarize(self.test_df, params=self.default_params, options=options)
+            outs.append(binarize._binarize(self.test_df['target'][:-1]))
+        
+        expected = {
+            '>': [1, 0, 0],
+            '<': [0, 1, 0],
+            '>=': [1, 0, 1],
+            '<=': [0, 1, 1]
+        }
+        
         self.assertTrue(
             np.array_equal(
-                binarize.binarize(),
-                np.array([0, 1, 1, 0])
+                list(expected.values()),
+                outs
             )
         )
         
-        # Qualifiers, inactive boundary
-        options['qualifiers']['run'] = True
-        options['qualifiers']['qualifier_col'] = 'qualifiers'
-        options['active_boundary_cond'] = False
-        binarize = Binarize(self.test_df, params=self.default_params, options=options)
-        self.assertTrue(
-            np.array_equal(
-                binarize.binarize(),
-                np.array([0, 1, 0, 0])
-            )
-        )
+        # Unknown operator
+        options['active_operator'] = 'unknown'
+        with self.assertRaises(ValueError):
+            binarize = Binarize(self.test_df, params=self.default_params, options=options)
+            binarize.binarize(self.test_df['target'][:-1])
         
     def test_main(self):
-        options = deepcopy(self.default_options)
-        options['qualifiers']['run'] = True
-        options['qualifiers']['qualifier_col'] = 'qualifiers'
-        options['convert_units']['units_col'] = 'units'
+        options = {
+            'handle_duplicates': True,
+            'convert_units': {
+                'run': True,
+                'units_col': 'units',
+                'output_units': 'molar'
+            },
+            'qualifiers': {
+                'run': True,
+                'qualifier_col': 'qualifiers'
+            },
+            'active_operator': '<='
+        }
+        
         binarize = Binarize(self.test_df, params=self.default_params, options=options)
-        x = binarize.main()
+        out = binarize.main()
+        
+        self.assertEqual(
+            out['smiles'].tolist(),
+            ['CCC', 'C', 'CN=C=O']
+        )
+        
+        self.assertEqual(
+            out['target'].tolist(),
+            [55, 4, 7]
+        )
+        
+        self.assertEqual(
+            out['units'].tolist(),
+            ['ug•ml-1', 'mg/l', 'unrecognized']
+        )
+        
+        self.assertEqual(
+            out['qualifiers'].tolist(),
+            ['>', '<', '=']
+        )
+        
+        self.assertTrue(
+            np.allclose(
+                out['molar_target'].tolist(),
+                [0.001248, 0.00150, np.nan],
+                atol=1e-2,
+                equal_nan=True
+            )
+        )
+        
+        self.assertTrue(
+            np.allclose(
+                out['binarized_target'].tolist(),
+                [np.nan, 1, np.nan],
+                equal_nan=True
+            )
+        )
         
 
 if __name__ == '__main__':
