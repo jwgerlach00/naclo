@@ -5,6 +5,8 @@ import pandas as pd
 from typing import Any, Callable, Optional, Union, IO
 import numpy as np
 
+from naclo.Writer import Writer  # Nested import (not present in __init__)
+
 
 def __exception_2_nan(x:Any, func:Callable) -> float:
     try:

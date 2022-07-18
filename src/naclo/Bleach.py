@@ -1,6 +1,6 @@
 import pandas as pd
 import warnings
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, Union, Optional
 
 # sourced from github.com/jwgerlach00
 import naclo
@@ -8,14 +8,17 @@ import stse
 from naclo.__asset_loader import recognized_bleach_options as recognized_options
 from naclo.__asset_loader import bleach_default_params as default_params
 from naclo.__asset_loader import bleach_default_options as default_options
+from naclo.__naclo_util import recognized_options_checker
 
 
 class Bleach:
+    filter_fragments_methods = ['carbon_count', 'mw', 'atom_count', 'none']
+    
     def __init__(self, df:pd.DataFrame, params:dict=default_params, options:dict=default_options) -> None:  # *
         # Load user options
         self.mol_settings = options['molecule_settings']
         self.file_settings = options['file_settings']
-        naclo.__naclo_util.recognized_options_checker(options, recognized_options)
+        recognized_options_checker(options, recognized_options)
 
         self.__recognized_structures = ['smiles', 'mol']
         self.__default_cols = {
@@ -37,8 +40,14 @@ class Bleach:
 
         self.mol_col = None
         self.smiles_col = None
-        self.__set_structure_cols()  # Assign mol and SMILES cols using input + defaults
         self.inchi_key_col = None
+        self.__set_structure_cols()  # Assign mol and SMILES cols using input + defaults
+        
+        # Set staticmethods to instance methods
+        self.mol_cleanup = self.__instance_mol_cleanup
+        self.handle_duplicates = self.__instance_handle_duplicates
+        self.append_columns = self.__instance_append_columns
+        self.remove_header_chars = self.__instance_remove_header_chars
 
 
 # -------------------------------------------------- ERROR CHECKING -------------------------------------------------- #
@@ -67,35 +76,12 @@ class Bleach:
                 the data: "{list(self.df.columns)}"')
 
 
-# -------------------------------------------------- STATIC METHODS -------------------------------------------------- #
-    @staticmethod
-    def __filter_fragments_factory(filter:str) -> Callable:
-        """Returns a callable SMILES fragment filter function using a key.
-
-        Args:
-            filter (str): Function key.
-
-        Raises:
-            ValueError
-
-        Returns:
-            Callable: Filter function.
-        """
-        if filter == 'carbon_count':
-            return naclo.fragments.carbon_count
-        elif filter == 'mw':
-            return naclo.fragments.mw
-        elif filter == 'atom_count':
-            return naclo.fragments.atom_count
-        else:
-            raise ValueError('Filter method is not allowed')
-
-
 # -------------------------------------------------- PRIVATE METHODS ------------------------------------------------- #
     def __set_structure_cols(self) -> None:
         """Sets Mol and SMILES columns using declared structure type."""
         self.mol_col = self.structure_col if self.structure_type == 'mol' else self.__default_cols['mol']
         self.smiles_col = self.structure_col if self.structure_type == 'smiles' else self.__default_cols['smiles']
+        self.inchi_key_col = self.__default_cols['inchi_key']
 
     def __drop_na_structures(self) -> None:
         """Drops NA along declared structure column."""
@@ -125,36 +111,51 @@ class Bleach:
     def __build_mols(self) -> None:
         """Creates MolFile column in the dataset using dataset SMILES column. DROPS NA."""
         self.df = naclo.dataframes.df_smiles_2_mols(self.df, self.smiles_col, self.mol_col)
+        
+    @staticmethod
+    def __filter_fragments_factory(filter:str) -> Callable:
+        """Returns a callable SMILES fragment filter function using a key.
 
-    def __remove_fragments(self) -> None:
+        Args:
+            filter (str): Function key.
+
+        Raises:
+            ValueError
+
+        Returns:
+            Callable: Filter function.
+        """
+        if filter == 'carbon_count':
+            return naclo.fragments.carbon_count
+        elif filter == 'mw':
+            return naclo.fragments.mw
+        elif filter == 'atom_count':
+            return naclo.fragments.atom_count
+        else:
+            raise ValueError('Filter method is not allowed')
+
+    @staticmethod
+    def __remove_fragments(df:pd.DataFrame, smiles_col_name:str, mol_col_name:str, salts:bool,
+                           filter_method:Optional[str]) -> pd.DataFrame:
         """Removes salts if specified. Drops NA as a result of salt removal. Filters out other fragments by specified
         method."""
-        option = self.mol_settings['remove_fragments']
-
-        # Remove salts
-        # if option['salts']:
-        #     self.df[self.mol_col] = naclo.fragments.remove_salts(self.df[self.mol_col], salts='[{0}]'.format(
-        #         option['salts'].replace(' ', '')))
-        #     self.__build_smiles()
+        df = df.copy()
+        rebuild_mols = lambda x: naclo.dataframes.df_smiles_2_mols(x, smiles_col_name, mol_col_name)
             
-        if option['salts']:
-            self.df[self.smiles_col] = self.df[self.smiles_col].apply(naclo.fragments.remove_recognized_salts)
-            self.__build_mols()
+        if salts:
+            df[smiles_col_name] = df[smiles_col_name].apply(naclo.fragments.remove_recognized_salts)
+            df = rebuild_mols(df)
 
             # Drop NA (blank string after salts)
-            self.df = stse.dataframes.convert_to_nan(self.df, na=[''])  # Convert bc NA is just empty string
-            self.df.dropna(subset=[self.smiles_col], inplace=True)  # Drop NA bc may include molecule that is ONLY salts
+            df = stse.dataframes.convert_to_nan(df, na=[''])  # Convert bc NA is just empty string
+            df.dropna(subset=[smiles_col_name], inplace=True)  # Drop NA bc may include molecule that is ONLY salts
 
         # Filter
-        if option['filter_method'] and option['filter_method'] != 'none':
-            self.df[self.smiles_col] = self.df[self.smiles_col].apply(
-                self.__filter_fragments_factory(option['filter_method']))
-            self.__build_mols()
-
-    def __neutralize_charges(self) -> None:
-        """Neutralizes Mols. Rebuilds SMILES."""
-        self.df[self.mol_col] = naclo.neutralize.neutralize_charges(self.df[self.mol_col])
-        self.__build_smiles
+        if filter_method and filter_method != 'none':
+            df[smiles_col_name] = df[smiles_col_name].apply(Bleach.__filter_fragments_factory(filter_method))
+            df = rebuild_mols(df)
+            
+        return df
 
     @staticmethod
     def __append_inchi_keys(df:pd.DataFrame, mol_col_name:str, inchi_key_col_name:str) -> pd.DataFrame:
@@ -165,13 +166,14 @@ class Bleach:
     def __drop_columns(df:pd.DataFrame, column_mapper:Dict[str, bool], mol_col_name:str, smiles_col_name:str,
                        inchi_key_col_name:str) -> pd.DataFrame:
         """Removes columns that the user does not want in the final output."""
+        
         # Drop added columns from built if not requested
         if not column_mapper['mol']:
-            df.drop(mol_col_name, inplace=True, axis=1)
+            df = df.drop(mol_col_name, axis=1)
         if not column_mapper['inchi_key']:
-            df.drop(inchi_key_col_name, inplace=True, axis=1)
+            df = df.drop(inchi_key_col_name, axis=1)
         if not column_mapper['smiles']:
-            df.drop(smiles_col_name, inplace=True, axis=1)
+            df = df.drop(smiles_col_name, axis=1)
         
         return df
 
@@ -184,7 +186,7 @@ class Bleach:
         return df
 
 
-# ------------------------------------------------- PUBLIC FUNCTIONS ------------------------------------------------- #
+# ---------------------------------------------------- MAIN STEPS ---------------------------------------------------- #
     # Step 1
     def drop_na(self) -> None:  # *
         """Converts blanks to NA. Drops NA Mols or SMILES. Handles NA targets. Removes entire NA columns"""
@@ -211,28 +213,45 @@ class Bleach:
             self.__build_smiles()  # Canonicalize SMILES
 
     # Step 3
-    def mol_cleanup(self):  # *
+    @staticmethod
+    def mol_cleanup(df:pd.DataFrame, smiles_col_name:str, mol_col_name:str, run_salts:bool, filter_method:Optional[str],
+                    run_neutralize:bool) -> pd.DataFrame:  # * (except neutralize)
         """Cleans Mols and SMILES."""
+        df = df.copy()
 
         # Step 1: Deal with fragments (includes salt step -- may include a molecule that is ONLY salts (NA dropped))
-        self.__remove_fragments()
+        df = Bleach.__remove_fragments(df, smiles_col_name, mol_col_name, run_salts,
+                                       filter_method=(None if filter_method == 'none' else filter_method))
 
         # Step 2: Neutralize mols
-        if self.mol_settings['neutralize_charges']['run']:
-            self.__neutralize_charges()
+        if run_neutralize:
+            df[mol_col_name] = naclo.neutralize.neutralize_charges(df[mol_col_name])
+            df = naclo.dataframes.df_mols_2_smiles(df, mol_col_name, smiles_col_name)  # Rebuild SMILES
+        
+        return df
+    
+    def __instance_mol_cleanup(self) -> None:
+        self.df = Bleach.mol_cleanup(self.df, self.smiles_col, self.mol_col,
+                                     run_salts=self.mol_settings['remove_fragments']['salts'],
+                                     filter_method=self.mol_settings['remove_fragments']['filter_method'],
+                                     run_neutralize=self.mol_settings['neutralize_charges']['run'])
 
     # Step 4
     @staticmethod
     def handle_duplicates(df:pd.DataFrame, mol_col_name:str, inchi_key_col_name:str, target_col:Union[str, None]=None,
                           method='average') -> pd.DataFrame:  # *
         """Computes inchi keys. Averages, removes, or keeps duplicates. ONLY BY INCHI KEY FOR NOW."""
-        Bleach.__append_inchi_keys(df, mol_col_name, inchi_key_col_name)
+        df = Bleach.__append_inchi_keys(df, mol_col_name, inchi_key_col_name)
 
         if method == 'average' and target_col:
             df = stse.duplicates.average(df, subsets=[inchi_key_col_name], average_by=target_col)
         elif method == 'remove' or (method == 'average' and not target_col):
             df = stse.duplicates.remove(df, subsets=[inchi_key_col_name])
         return df
+    
+    def __instance_handle_duplicates(self) -> None:
+        self.df = Bleach.handle_duplicates(self.df, self.mol_col, self.inchi_key_col, self.target_col,
+                                           method=self.file_settings['duplicate_compounds']['selected'])  # Generates InchiKeys
 
     # Step 5
     @staticmethod
@@ -243,9 +262,15 @@ class Bleach:
         Args:
             df (pandas DataFrame): Data to transform
         """
+        df = df.copy()
+        
         df = Bleach.__drop_columns(df, column_mapper, mol_col_name, smiles_col_name, inchi_key_col_name)
         df = Bleach.__add_columns(df, column_mapper, mol_col_name)
         return df
+    
+    def __instance_append_columns(self) -> None:
+        self.df = Bleach.append_columns(self.df, self.file_settings['append_columns'], self.mol_col, self.smiles_col,
+                                        self.inchi_key_col)
 
     # Step 6
     @staticmethod
@@ -253,6 +278,9 @@ class Bleach:
         """Removes any chars listed in a string of chars from the df column headers.
         """
         return stse.dataframes.remove_header_chars(df, chars)
+    
+    def __instance_remove_header_chars(self) -> None:
+        self.df = Bleach.remove_header_chars(self.df, self.file_settings['remove_header_chars']['chars'])
 
 
 # ----------------------------------------------------- MAIN LOOP ---------------------------------------------------- #
@@ -265,10 +293,7 @@ class Bleach:
         self.drop_na()  # Before init_structure bc need NA
         self.init_structure_compute()
         self.mol_cleanup()
-        self.df = self.handle_duplicates(self.df, self.mol_col, self.inchi_key_col, self.target_col,
-                                         method=self.file_settings['duplicate_compounds'])  # Generates InchiKeys
-        self.df = self.append_columns(self.df, self.file_settings['append_columns'], self.mol_col, self.smiles_col,
-                                      self.inchi_key_col)
-        self.df = self.remove_header_chars(self.df, self.file_settings['remove_header_chars']['chars'])
-        
+        self.handle_duplicates()
+        self.append_columns()
+        self.remove_header_chars()
         return self.df

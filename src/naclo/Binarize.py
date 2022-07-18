@@ -5,9 +5,9 @@ import numpy as np
 
 import naclo
 import stse
+from stse.dataframes import sync_na_drop
 from naclo.__asset_loader import recognized_binarize_options
 from naclo.__naclo_util import recognized_options_checker, check_columns_in_df
-from naclo.__for_stse import sync_na_drop
 
 class Binarize:
     def __init__(self, df:pd.DataFrame, params:dict, options:dict) -> None:
@@ -67,9 +67,9 @@ class Binarize:
         else:
             qualifiers = None
         
-        molar_binarizer = naclo.Binarizer(values=values, boundary=self.__decision_boundary,
+        binarizer = stse.Binarizer(values=values, boundary=self.__decision_boundary,
                                           active_operator=self.__options['active_operator'], qualifiers=qualifiers)
-        return molar_binarizer.binarize()
+        return binarizer.binarize()
     
     def main(self) -> pd.DataFrame:
         if self.__options['convert_units']['run']:
