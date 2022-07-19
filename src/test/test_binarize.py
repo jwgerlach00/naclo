@@ -168,8 +168,31 @@ class TestBinarize(unittest.TestCase):
             binarize = Binarize(self.test_df, params=self.default_params, options=options)
             binarize.binarize(self.test_df['target'][:-1])
             
-    # def test_handle_duplicates(self):
-    #     print(self.test_df)
+    def test_handle_duplicates(self):
+        input_df = pd.DataFrame({
+            'smiles': ['CC', 'CC', 'CCC', 'CCC', 'CCC', 'CCC', 'CCC', 'O=S=O', 'O=S=O', 'O=S=O', 'O'],
+            'bin': [0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1]
+        })
+        
+        # Agree ratio of 0.8
+        expected_df = pd.DataFrame({
+            'smiles': ['CC', 'CCC', 'O'],  # SO2 dropped bc bad ratio
+            'bin': [0, 1, 1]
+        })
+        out = Binarize.handle_duplicates(input_df, 'smiles', 'smiles', 'bin', agree_ratio=0.8)
+        self.assertTrue(
+            out.equals(expected_df)
+        )
+        
+        # Agree ratio of 0.3
+        expected_df = pd.DataFrame({
+            'smiles': ['CC', 'CCC', 'O=S=O', 'O'],
+            'bin': [0, 1, 0, 1]
+        })
+        out = Binarize.handle_duplicates(input_df, 'smiles', 'smiles', 'bin', agree_ratio=0.6)
+        self.assertTrue(
+            out.equals(expected_df)
+        )
         
     def test_main(self):
         options = {

@@ -1,4 +1,5 @@
 from typing import Iterable, List, Optional, Tuple, Union
+import warnings
 import pandas as pd
 from copy import copy
 import numpy as np
@@ -76,6 +77,8 @@ class Binarize:
                           agree_ratio:float=.8) -> pd.DataFrame:
         if agree_ratio < 0 or agree_ratio > 1:
             raise ValueError('Agree ratio must be between 0 and 1')
+        elif agree_ratio == 0.5:
+            warnings.warn(f'Agree ratio of 0.5 will yield a 1 if structures are in 50{0} agreement'.format('%'))
         
         if structure_type == 'smiles':
             df = naclo.dataframes.df_smiles_2_inchi_keys(df, structure_col_name, 'inchi_key')
@@ -84,17 +87,20 @@ class Binarize:
         else:
             raise ValueError(f'Unrecognized structure type: {structure_type}')
         
-        avg_df = stse.duplicates.average(df, subsets=['inchi_key'], average_by=bin_value_col_name)
-        
+        avg_df = stse.duplicates.average(df, subsets=['inchi_key'], average_by=bin_value_col_name) \
+            .reset_index(drop=True)
+
+        new_bins = []
         for i, val in enumerate(avg_df[bin_value_col_name]):
-            if val >= agree_ratio:
-                val = 1
+            if val >= agree_ratio:  # NOTE: Will default to 1 if agree ratio is set to 0.5
+                new_bins.append(1)
             elif val <= 1 - agree_ratio:
-                val = 0
+                new_bins.append(0)
             else:
                 avg_df.drop(index=i, inplace=True)
-                
-        return avg_df
+        avg_df[bin_value_col_name] = new_bins
+        
+        return avg_df.reset_index(drop=True).drop(columns=['inchi_key'])
     
     def __instance_handle_duplicates(self) -> pd.DataFrame:
         self.df = Binarize.handle_duplicates(self.df, self.__structure_type, self.__structure_col,
