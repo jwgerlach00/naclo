@@ -1,4 +1,4 @@
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Tuple, Union
 import pandas as pd
 from copy import copy
 import numpy as np
@@ -85,7 +85,7 @@ class Binarize:
             raise ValueError(f'Unrecognized structure type: {structure_type}')
         
         avg_df = stse.duplicates.average(df, subsets=['inchi_key'], average_by=bin_value_col_name)
-        print(avg_df)
+        
         for i, val in enumerate(avg_df[bin_value_col_name]):
             if val >= agree_ratio:
                 val = 1
@@ -93,7 +93,7 @@ class Binarize:
                 val = 0
             else:
                 avg_df.drop(index=i, inplace=True)
-        print(avg_df)
+                
         return avg_df
     
     def __instance_handle_duplicates(self) -> pd.DataFrame:
@@ -103,16 +103,16 @@ class Binarize:
         
     @staticmethod
     def binarize(df:pd.DataFrame, values:Iterable, decision_boundary:Union[int, float, np.number], active_operator:str,
-                 qualifier_col_name:Optional[str]=None) -> np.array:
+                 qualifier_col_name:Optional[str]=None) -> Tuple[pd.DataFrame, np.array]:
         if qualifier_col_name:
-            df, values = sync_na_drop(df, qualifier_col_name, values, all_na=True)
+            df, values = sync_na_drop(df, qualifier_col_name, values, all_na=True)  # Drop NA
             qualifiers = df[qualifier_col_name].tolist()
         else:
             qualifiers = None
         
         binarizer = stse.Binarizer(values=values, boundary=decision_boundary, active_operator=active_operator,
                                    qualifiers=qualifiers)
-        return binarizer.binarize()
+        return df, binarizer.binarize()
     
     def __instance_binarize(self, values:Iterable):
         qualifier_col_name = self.__options['qualifiers']['qualifier_col'] if self.__options['qualifiers']['run'] \
@@ -129,7 +129,8 @@ class Binarize:
             converted_values = self.convert_units(output_units).tolist()
             
             self.df[f'{output_units}_{self.__target_col}'] = converted_values
-            self.df[self.binarized_col_name] = self.binarize(converted_values)
+            self.df, bin_values = self.binarize(converted_values)
+            self.df[self.binarized_col_name] = bin_values
         else:
             self.df[self.binarized_col_name] = self.binarize(self.df[self.__target_col].tolist())
             

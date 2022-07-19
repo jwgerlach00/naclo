@@ -105,26 +105,29 @@ class TestBinarize(unittest.TestCase):
         options = deepcopy(self.default_options)
         options['qualifiers']['run'] = False
         
-        # Loop through allowed operators
-        outs = []
-        for options['active_operator'] in ['>', '<', '>=', '<=']:
-            binarize = Binarize(self.test_df, params=self.default_params, options=options)
-            outs.append(binarize.binarize(self.test_df['target']))
-        
-        expected = {
+        expected_arrs = {
             '>': [1, 0, 0, 1, 1],
             '<': [0, 1, 0, 0, 0],
             '>=': [1, 0, 1, 1, 1],
             '<=': [0, 1, 1, 0, 0]
         }
         
-        self.assertTrue(
-            np.array_equal(
-                list(expected.values()),
-                outs
+        # Loop through allowed operators
+        for options['active_operator'] in ['>', '<', '>=', '<=']:
+            binarize = Binarize(self.test_df, params=self.default_params, options=options)
+            out_df, out_arr = binarize.binarize(self.test_df['target'])
+
+            self.assertTrue(
+                out_df.equals(binarize.df)  # No qualifier drop bc no qualifiers
             )
-        )
-        
+            
+            self.assertTrue(
+                np.array_equal(
+                    list(expected_arrs[options['active_operator']]),
+                    out_arr
+                )
+            )
+
         # Unknown operator
         options['active_operator'] = 'unknown'
         with self.assertRaises(ValueError):
@@ -136,25 +139,28 @@ class TestBinarize(unittest.TestCase):
         options['qualifiers']['run'] = True
         options['qualifiers']['qualifier_col'] = 'qualifiers'
         
-        # Loop through allowed operators
-        outs = []
-        for options['active_operator'] in ['>', '<', '>=', '<=']:
-            binarize = Binarize(self.test_df, params=self.default_params, options=options)
-            outs.append(binarize.binarize(self.test_df['target'][:-1]))
-        
-        expected = {
+        expected_arrs = {
             '>': [1, 0, 0],
             '<': [0, 1, 0],
             '>=': [1, 0, 1],
             '<=': [0, 1, 1]
         }
         
-        self.assertTrue(
-            np.array_equal(
-                list(expected.values()),
-                outs
+        # Loop through allowed operators
+        for options['active_operator'] in ['>', '<', '>=', '<=']:
+            binarize = Binarize(self.test_df, params=self.default_params, options=options)
+            out_df, out_arr = (binarize.binarize(self.test_df['target'][:-1]))
+            
+            self.assertTrue(
+                out_df.equals(binarize.df.dropna(subset=['qualifiers']))
             )
-        )
+            
+            self.assertTrue(
+                np.array_equal(
+                    list(expected_arrs[options['active_operator']]),
+                    out_arr
+                )
+            )
         
         # Unknown operator
         options['active_operator'] = 'unknown'
@@ -162,8 +168,8 @@ class TestBinarize(unittest.TestCase):
             binarize = Binarize(self.test_df, params=self.default_params, options=options)
             binarize.binarize(self.test_df['target'][:-1])
             
-    def test_handle_duplicates(self):
-        print(self.test_df)
+    # def test_handle_duplicates(self):
+    #     print(self.test_df)
         
     def test_main(self):
         options = {
@@ -182,7 +188,7 @@ class TestBinarize(unittest.TestCase):
             },
             'active_operator': '<='
         }
-        
+
         binarize = Binarize(self.test_df, params=self.default_params, options=options)
         out = binarize.main()
         

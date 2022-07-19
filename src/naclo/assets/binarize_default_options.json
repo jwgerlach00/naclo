@@ -1,5 +1,8 @@
 {
-    "handle_duplicates": true,
+    "duplicates": {
+        "run": true,
+        "agree_ratio": 0.8
+    },
     "convert_units": {
         "run": false,
         "units_col": "",
