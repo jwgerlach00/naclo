@@ -14,6 +14,21 @@ def __exception_2_nan(x:Any, func:Callable) -> float:
     except Exception:
         return np.nan
     
+def df_mols_2_smiles(df:pd.DataFrame, mol_name:str, smiles_name:str, dropna:bool=True) -> pd.DataFrame:  # *
+    """Adds SMILES Key column to df using Mol column as reference.
+
+    Args:
+        df (pandas DataFrame): DataFrame to add SMILES column to.
+        mol_name (str): Name of Mol column in df.
+        inchi_name (str): Name of InChi column in df.
+        dropna (bool, optional): Drop NA SMILES. Defaults to True.
+
+    Returns:
+        pandas DataFrame: DataFrame with SMILES column appended.
+    """
+    df = df.copy()
+    df[smiles_name] = df[mol_name].map(lambda x: __exception_2_nan(x, Chem.MolToSmiles), na_action='ignore')
+    return df.dropna(subset=[smiles_name]) if dropna else df
 
 def df_smiles_2_mols(df:pd.DataFrame, smiles_name:str, mol_name:str, dropna:bool=True) -> pd.DataFrame:  # *
     """Adds rdkit Mol column to df using SMILES column as reference.
@@ -46,22 +61,12 @@ def df_mols_2_inchi_keys(df:pd.DataFrame, mol_name:str, inchi_name:str, dropna:b
     df = df.copy()
     df[inchi_name] = df[mol_name].map(lambda x: __exception_2_nan(x, Chem.MolToInchiKey), na_action='ignore')
     return df.dropna(subset=[inchi_name]) if dropna else df
-    
-def df_mols_2_smiles(df:pd.DataFrame, mol_name:str, smiles_name:str, dropna:bool=True) -> pd.DataFrame:  # *
-    """Adds SMILES Key column to df using Mol column as reference.
 
-    Args:
-        df (pandas DataFrame): DataFrame to add SMILES column to.
-        mol_name (str): Name of Mol column in df.
-        inchi_name (str): Name of InChi column in df.
-        dropna (bool, optional): Drop NA SMILES. Defaults to True.
-
-    Returns:
-        pandas DataFrame: DataFrame with SMILES column appended.
-    """
+def df_smiles_2_inchi_keys(df:pd.DataFrame, smiles_name:str, inchi_name:str, dropna:bool=True) -> pd.DataFrame:
     df = df.copy()
-    df[smiles_name] = df[mol_name].map(lambda x: __exception_2_nan(x, Chem.MolToSmiles), na_action='ignore')
-    return df.dropna(subset=[smiles_name]) if dropna else df
+    df = df_smiles_2_mols(df, smiles_name, 'ROMol', dropna=dropna)
+    df = df_mols_2_inchi_keys(df, 'ROMol', inchi_name, dropna=dropna)
+    return df.drop(columns=['ROMol'])  # Remove added Mol column
 
 def write_sdf(df, out_path:Union[str, IO], mol_col_name:str, id_column_name:str='RowID') -> None:  # *
     """Writes dataframe to SDF file. Includes ID name if ID is valid.

@@ -109,7 +109,7 @@ class TestBinarize(unittest.TestCase):
         outs = []
         for options['active_operator'] in ['>', '<', '>=', '<=']:
             binarize = Binarize(self.test_df, params=self.default_params, options=options)
-            outs.append(binarize._binarize(self.test_df['target']))
+            outs.append(binarize.binarize(self.test_df['target']))
         
         expected = {
             '>': [1, 0, 0, 1, 1],
@@ -129,7 +129,7 @@ class TestBinarize(unittest.TestCase):
         options['active_operator'] = 'unknown'
         with self.assertRaises(ValueError):
             binarize = Binarize(self.test_df, params=self.default_params, options=options)
-            binarize._binarize(self.test_df['target'])
+            binarize.binarize(self.test_df['target'])
         
     def test_binarize_with_qualifiers(self):
         options = deepcopy(self.default_options)
@@ -140,7 +140,7 @@ class TestBinarize(unittest.TestCase):
         outs = []
         for options['active_operator'] in ['>', '<', '>=', '<=']:
             binarize = Binarize(self.test_df, params=self.default_params, options=options)
-            outs.append(binarize._binarize(self.test_df['target'][:-1]))
+            outs.append(binarize.binarize(self.test_df['target'][:-1]))
         
         expected = {
             '>': [1, 0, 0],
@@ -161,10 +161,16 @@ class TestBinarize(unittest.TestCase):
         with self.assertRaises(ValueError):
             binarize = Binarize(self.test_df, params=self.default_params, options=options)
             binarize.binarize(self.test_df['target'][:-1])
+            
+    def test_handle_duplicates(self):
+        print(self.test_df)
         
     def test_main(self):
         options = {
-            'handle_duplicates': True,
+            'duplicates': {
+                'run': False,
+                'agree_ratio': 0.8
+            },
             'convert_units': {
                 'run': True,
                 'units_col': 'units',
@@ -216,7 +222,7 @@ class TestBinarize(unittest.TestCase):
                 equal_nan=True
             )
         )
-        
+
 
 if __name__ == '__main__':
     unittest.main()

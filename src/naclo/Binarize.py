@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from typing import Iterable, List, Optional, Union
 import pandas as pd
 from copy import copy
 import numpy as np
@@ -21,6 +21,7 @@ class Binarize:
         self.__structure_type = params['structure_type']
         self.__target_col = params['target_col']  # Set to standard_value col if doing unit conversion
         self.__decision_boundary = params['decision_boundary']
+        self.binarized_col_name = f'binarized_{self.__target_col}'
         
         # Drop NA structures and targets
         self.df = stse.dataframes.convert_to_nan(self.df)
@@ -34,19 +35,26 @@ class Binarize:
         if self.__options['qualifiers']['run']:
             cols_to_check.append(self.__options['qualifiers']['qualifier_col'])
         check_columns_in_df(self.df, cols_to_check)
-    
-    def __mol_weights(self) -> List[float]:
-        if self.__structure_type == 'smiles':
-            mols = naclo.smiles_2_mols(self.df[self.__structure_col])
-        elif self.__structure_type == 'mol':
-            mols = self.df[self.__structure_col]
-        return naclo.mol_stats.mol_weights(mols)
         
-    def convert_units(self, output_units) -> pd.DataFrame:
+        # Instance methods
+        self.handle_duplicates = self.__instance_handle_duplicates
+        self.binarize = self.__instance_binarize
+        self.convert_units = self.__instance_convert_units
+    
+    @staticmethod
+    def __mol_weights(df:pd.DataFrame, structure_type:str, structure_col_name:str) -> List[float]:
+        if structure_type == 'smiles':
+            mols = naclo.smiles_2_mols(df[structure_col_name])
+        elif structure_type == 'mol':
+            mols = df[structure_col_name]
+        return naclo.mol_stats.mol_weights(mols)
+    
+    @staticmethod
+    def convert_units(df:pd.DataFrame, structure_col_name:str, target_col_name:str, units_col_name:str, structure_type:str, output_units:str) -> pd.DataFrame:
         # target_col == standard_value col in this case
-        mws = self.__mol_weights()
-        unit_converter = naclo.UnitConverter(values=self.df[self.__target_col],
-                                             units=self.df[self.__options['convert_units']['units_col']],
+        mws = Binarize.__mol_weights(df=df, structure_type=structure_type, structure_col_name=structure_col_name)
+        unit_converter = naclo.UnitConverter(values=df[target_col_name],
+                                             units=df[units_col_name],
                                              mol_weights=mws)
         if output_units == 'neg_log_molar':
             return unit_converter.to_neg_log_molar()
@@ -57,19 +65,62 @@ class Binarize:
         else:
             raise ValueError(f'Unrecognized output units: {output_units}')
         
-    def _binarize(self, values:Iterable) -> np.array:
-        if self.__options['qualifiers']['run']:
-            col = self.__options['qualifiers']['qualifier_col']
-            
-            self.df, values = sync_na_drop(self.df, col, values, all_na=True)
-            
-            qualifiers = self.df[col].tolist()
+    def __instance_convert_units(self, output_units):
+        return Binarize.convert_units(df=self.df, structure_col_name=self.__structure_col,
+                                      target_col_name=self.__target_col,
+                                      units_col_name=self.__options['convert_units']['units_col'],
+                                      structure_type=self.__structure_type, output_units=output_units)
+
+    @staticmethod
+    def handle_duplicates(df:pd.DataFrame, structure_type:str, structure_col_name:str, bin_value_col_name:str,
+                          agree_ratio:float=.8) -> pd.DataFrame:
+        if agree_ratio < 0 or agree_ratio > 1:
+            raise ValueError('Agree ratio must be between 0 and 1')
+        
+        if structure_type == 'smiles':
+            df = naclo.dataframes.df_smiles_2_inchi_keys(df, structure_col_name, 'inchi_key')
+        elif structure_type == 'mol':
+            df = naclo.dataframes.df_mols_2_inchi_keys(df, structure_col_name, 'inchi_key')
+        else:
+            raise ValueError(f'Unrecognized structure type: {structure_type}')
+        
+        avg_df = stse.duplicates.average(df, subsets=['inchi_key'], average_by=bin_value_col_name)
+        print(avg_df)
+        for i, val in enumerate(avg_df[bin_value_col_name]):
+            if val >= agree_ratio:
+                val = 1
+            elif val <= 1 - agree_ratio:
+                val = 0
+            else:
+                avg_df.drop(index=i, inplace=True)
+        print(avg_df)
+        return avg_df
+    
+    def __instance_handle_duplicates(self) -> pd.DataFrame:
+        self.df = Binarize.handle_duplicates(self.df, self.__structure_type, self.__structure_col,
+                                             self.binarized_col_name, self.__options['duplicates']['agree_ratio'])
+        return self.df
+        
+    @staticmethod
+    def binarize(df:pd.DataFrame, values:Iterable, decision_boundary:Union[int, float, np.number], active_operator:str,
+                 qualifier_col_name:Optional[str]=None) -> np.array:
+        if qualifier_col_name:
+            df, values = sync_na_drop(df, qualifier_col_name, values, all_na=True)
+            qualifiers = df[qualifier_col_name].tolist()
         else:
             qualifiers = None
         
-        binarizer = stse.Binarizer(values=values, boundary=self.__decision_boundary,
-                                          active_operator=self.__options['active_operator'], qualifiers=qualifiers)
+        binarizer = stse.Binarizer(values=values, boundary=decision_boundary, active_operator=active_operator,
+                                   qualifiers=qualifiers)
         return binarizer.binarize()
+    
+    def __instance_binarize(self, values:Iterable):
+        qualifier_col_name = self.__options['qualifiers']['qualifier_col'] if self.__options['qualifiers']['run'] \
+            else None
+            
+        return Binarize.binarize(df=self.df, values=values, decision_boundary=self.__decision_boundary,
+                                 active_operator=self.__options['active_operator'],
+                                 qualifier_col_name=qualifier_col_name)
     
     def main(self) -> pd.DataFrame:
         if self.__options['convert_units']['run']:
@@ -78,8 +129,11 @@ class Binarize:
             converted_values = self.convert_units(output_units).tolist()
             
             self.df[f'{output_units}_{self.__target_col}'] = converted_values
-            self.df[f'binarized_{self.__target_col}'] = self._binarize(converted_values)
+            self.df[self.binarized_col_name] = self.binarize(converted_values)
         else:
-            self.df[f'binarized_{self.__target_col}'] = self._binarize(self.df[self.__target_col].tolist())
+            self.df[self.binarized_col_name] = self.binarize(self.df[self.__target_col].tolist())
             
+        if self.__options['duplicates']['run']:
+            self.df = self.handle_duplicates()
+        
         return self.df

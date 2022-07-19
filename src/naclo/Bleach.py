@@ -251,7 +251,7 @@ class Bleach:
     
     def __instance_handle_duplicates(self) -> None:
         self.df = Bleach.handle_duplicates(self.df, self.mol_col, self.inchi_key_col, self.target_col,
-                                           method=self.file_settings['duplicate_compounds']['selected'])  # Generates InchiKeys
+                                           method=self.file_settings['duplicate_compounds']['selected'])
 
     # Step 5
     @staticmethod
