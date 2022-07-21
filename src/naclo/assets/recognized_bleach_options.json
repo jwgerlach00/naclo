@@ -6,6 +6,10 @@
         "remove_fragments": {
             "salts": [true, false],
             "filter_method": ["carbon_count", "mw", "atom_count", "none", ""]
+        },
+        "convert_units": {
+            "units_col": "",
+            "output_units": ["molar", "neg_log_molar"]
         }
     },
 

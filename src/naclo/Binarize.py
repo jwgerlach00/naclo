@@ -31,7 +31,7 @@ class Binarize:
         
         # Check all needed columns exist in df
         cols_to_check = [self.__structure_col, self.__target_col]
-        if self.__options['convert_units']['run']:
+        if self.__options['convert_units']['units_col']:
             cols_to_check.append(self.__options['convert_units']['units_col'])
         if self.__options['qualifiers']['run']:
             cols_to_check.append(self.__options['qualifiers']['qualifier_col'])
@@ -129,7 +129,7 @@ class Binarize:
                                  qualifier_col_name=qualifier_col_name)
     
     def main(self) -> pd.DataFrame:
-        if self.__options['convert_units']['run']:
+        if self.__options['convert_units']['units_col']:
             # Convert and append units
             output_units = self.__options['convert_units']['output_units']
             converted_values = self.convert_units(output_units).tolist()

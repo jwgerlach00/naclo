@@ -4,7 +4,6 @@
         "agree_ratio": 0.0
     },
     "convert_units": {
-        "run": [true, false],
         "units_col": "",
         "output_units": ["molar", "neg_log_molar", "nano_molar"]
     },

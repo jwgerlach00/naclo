@@ -201,7 +201,6 @@ class TestBinarize(unittest.TestCase):
                 'agree_ratio': 0.8
             },
             'convert_units': {
-                'run': True,
                 'units_col': 'units',
                 'output_units': 'molar'
             },

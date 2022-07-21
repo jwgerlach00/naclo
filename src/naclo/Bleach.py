@@ -44,6 +44,7 @@ class Bleach:
         self.__set_structure_cols()  # Assign mol and SMILES cols using input + defaults
         
         # Set staticmethods to instance methods
+        self.convert_units = self.__instance_convert_units
         self.mol_cleanup = self.__instance_mol_cleanup
         self.handle_duplicates = self.__instance_handle_duplicates
         self.append_columns = self.__instance_append_columns
@@ -211,8 +212,38 @@ class Bleach:
         elif self.structure_type == 'smiles':
             self.__build_mols()
             self.__build_smiles()  # Canonicalize SMILES
-
+    
     # Step 3
+    @staticmethod
+    def convert_units(df:pd.DataFrame, mol_col_name:str, value_col_name:str, units_col_name:str,
+                      output_units:str) -> pd.DataFrame:
+        df = df.copy()
+        
+        uc = naclo.UnitConverter(df[value_col_name], df[units_col_name], naclo.mol_weights(df[mol_col_name]))
+        
+        if output_units == 'molar':
+            col_name = f'molar_{units_col_name}'
+            df[col_name] = uc.to_molar()
+        elif output_units == 'neg_log_molar':
+            col_name = f'neg_log_molar_{units_col_name}'
+            df[col_name] = uc.to_neg_log_molar()
+        else:
+            raise ValueError(f'Output units: "{output_units}" are not recognized')
+        
+        return df.dropna(subset=[col_name])
+    
+    def __instance_convert_units(self):
+        convert_units = self.mol_settings['convert_units']
+        if convert_units['units_col']:
+            if not self.target_col:
+                warnings.warn('CONVERT_UNITS: options.molecule_settings.convert_units was set to run but no activity \
+                    column was specified', RuntimeWarning)
+                return
+            self.df = Bleach.convert_units(df=self.df, mol_col_name=self.mol_col, value_col_name=self.target_col,
+                                           units_col_name=convert_units['units_col'],
+                                           output_units=convert_units['output_units'])
+
+    # Step 4
     @staticmethod
     def mol_cleanup(df:pd.DataFrame, smiles_col_name:str, mol_col_name:str, run_salts:bool, filter_method:Optional[str],
                     run_neutralize:bool) -> pd.DataFrame:  # * (except neutralize)
@@ -236,7 +267,7 @@ class Bleach:
                                      filter_method=self.mol_settings['remove_fragments']['filter_method'],
                                      run_neutralize=self.mol_settings['neutralize_charges']['run'])
 
-    # Step 4
+    # Step 5
     @staticmethod
     def handle_duplicates(df:pd.DataFrame, mol_col_name:str, inchi_key_col_name:str, target_col:Union[str, None]=None,
                           method='average') -> pd.DataFrame:  # *
@@ -253,7 +284,7 @@ class Bleach:
         self.df = Bleach.handle_duplicates(self.df, self.mol_col, self.inchi_key_col, self.target_col,
                                            method=self.file_settings['duplicate_compounds']['selected'])
 
-    # Step 5
+    # Step 6
     @staticmethod
     def append_columns(df:pd.DataFrame, column_mapper:Dict[str, bool], mol_col_name:str, smiles_col_name:str,
                        inchi_key_col_name:str) -> pd.DataFrame:  # *
@@ -272,7 +303,7 @@ class Bleach:
         self.df = Bleach.append_columns(self.df, self.file_settings['append_columns'], self.mol_col, self.smiles_col,
                                         self.inchi_key_col)
 
-    # Step 6
+    # Step 7
     @staticmethod
     def remove_header_chars(df, chars) -> pd.DataFrame:  # *
         """Removes any chars listed in a string of chars from the df column headers.
@@ -292,6 +323,7 @@ class Bleach:
         """
         self.drop_na()  # Before init_structure bc need NA
         self.init_structure_compute()
+        self.convert_units()
         self.mol_cleanup()
         self.handle_duplicates()
         self.append_columns()

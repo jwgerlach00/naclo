@@ -1,3 +1,4 @@
+from math import log10
 import unittest
 import json
 import pandas as pd
@@ -232,6 +233,75 @@ class TestBleach(unittest.TestCase):
         self.assertEqual(
             bleach.df['SMILES'].tolist(),
             self.smiles_df['SMILES'].tolist()[:-1]  # Excluding blank
+        )
+        
+    def test_convert_units(self):
+        df = pd.DataFrame({
+            'SMILES': ['CCC', 'C', 'CCC', 'CC'],
+            'value': [1, 2, np.nan, 3],
+            'units': [np.nan, 'nm', 'm', 'pg ml-1']
+        })
+        
+        params = copy.deepcopy(self.default_params)
+        params['structure_col'] = 'SMILES'
+        params['structure_type'] = 'smiles'
+        
+        options = copy.deepcopy(self.default_options)
+        options['molecule_settings']['convert_units'] = {
+            'units_col': 'units',
+            'output_units': 'molar'
+        }
+        
+        # Warning: no target value column
+        bleach = Bleach(df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        
+        with self.assertRaises(RuntimeWarning):
+            bleach.convert_units()
+        
+        
+        # molar units
+        params['target_col'] = 'value'
+        bleach = Bleach(df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.convert_units()
+        
+        self.assertEqual(
+            list(bleach.df.columns),
+            list(df.columns) + ['ROMol', 'molar_units']
+        )
+        self.assertTrue(
+            bleach.df.drop(columns=['ROMol', 'molar_units']).equals(
+                df.dropna(subset=['units', 'value'])
+            )
+        )
+        molar_units = bleach.df['molar_units'].tolist()
+        
+        # neg_log_molar units
+        options['molecule_settings']['convert_units']['output_units'] = 'neg_log_molar'
+        params['target_col'] = 'value'
+        bleach = Bleach(df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.convert_units()
+        
+        self.assertEqual(
+            list(bleach.df.columns),
+            list(df.columns) + ['ROMol', 'neg_log_molar_units']
+        )
+        self.assertTrue(
+            bleach.df.drop(columns=['ROMol', 'neg_log_molar_units']).equals(
+                df.dropna(subset=['units', 'value'])
+            )
+        )
+        neg_log_molar_units = bleach.df['neg_log_molar_units'].tolist()
+        
+        # neg_log_molar is true
+        self.assertEqual(
+            neg_log_molar_units,
+            [-1 * log10(m) for m in molar_units]
         )
         
     def test_mol_cleanup(self):

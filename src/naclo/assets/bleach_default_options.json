@@ -6,6 +6,10 @@
         "remove_fragments": {
             "salts": true,
             "filter_method": "carbon_count"
+        },
+        "convert_units": {
+            "units_col": "",
+            "output_units": "neg_log_molar"
         }
     },
 
