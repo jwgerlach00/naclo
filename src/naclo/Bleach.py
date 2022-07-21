@@ -216,7 +216,7 @@ class Bleach:
     # Step 3
     @staticmethod
     def convert_units(df:pd.DataFrame, mol_col_name:str, value_col_name:str, units_col_name:str,
-                      output_units:str) -> pd.DataFrame:
+                      output_units:str, drop_na_units:bool) -> pd.DataFrame:
         df = df.copy()
         
         uc = naclo.UnitConverter(df[value_col_name], df[units_col_name], naclo.mol_weights(df[mol_col_name]))
@@ -230,7 +230,7 @@ class Bleach:
         else:
             raise ValueError(f'Output units: "{output_units}" are not recognized')
         
-        return df.dropna(subset=[col_name])
+        return df.dropna(subset=[col_name]) if drop_na_units else df
     
     def __instance_convert_units(self):
         convert_units = self.mol_settings['convert_units']
@@ -241,7 +241,8 @@ class Bleach:
                 return
             self.df = Bleach.convert_units(df=self.df, mol_col_name=self.mol_col, value_col_name=self.target_col,
                                            units_col_name=convert_units['units_col'],
-                                           output_units=convert_units['output_units'])
+                                           output_units=convert_units['output_units'],
+                                           drop_na_units=convert_units['drop_na'])
 
     # Step 4
     @staticmethod

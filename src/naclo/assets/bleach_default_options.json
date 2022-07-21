@@ -9,7 +9,8 @@
         },
         "convert_units": {
             "units_col": "",
-            "output_units": "neg_log_molar"
+            "output_units": "neg_log_molar",
+            "drop_na": false
         }
     },
 

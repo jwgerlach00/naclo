@@ -249,7 +249,8 @@ class TestBleach(unittest.TestCase):
         options = copy.deepcopy(self.default_options)
         options['molecule_settings']['convert_units'] = {
             'units_col': 'units',
-            'output_units': 'molar'
+            'output_units': 'molar',
+            'drop_na': True
         }
         
         # Warning: no target value column
@@ -281,7 +282,6 @@ class TestBleach(unittest.TestCase):
         
         # neg_log_molar units
         options['molecule_settings']['convert_units']['output_units'] = 'neg_log_molar'
-        params['target_col'] = 'value'
         bleach = Bleach(df, params, options)
         bleach.drop_na()
         bleach.init_structure_compute()
@@ -297,6 +297,23 @@ class TestBleach(unittest.TestCase):
             )
         )
         neg_log_molar_units = bleach.df['neg_log_molar_units'].tolist()
+        
+        # Dont drop NA units
+        options['molecule_settings']['convert_units']['drop_na'] = False
+        bleach = Bleach(df, params, options)
+        bleach.drop_na()
+        bleach.init_structure_compute()
+        bleach.convert_units()
+        
+        self.assertEqual(
+            list(bleach.df.columns),
+            list(df.columns) + ['ROMol', 'neg_log_molar_units']
+        )
+        self.assertTrue(
+            bleach.df.drop(columns=['ROMol', 'neg_log_molar_units']).equals(
+                df
+            )
+        )
         
         # neg_log_molar is true
         self.assertEqual(
