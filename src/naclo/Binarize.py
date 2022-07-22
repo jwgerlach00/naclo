@@ -112,10 +112,11 @@ class Binarize:
                  qualifier_col_name:Optional[str]=None) -> Tuple[pd.DataFrame, np.array]:
         if qualifier_col_name:
             df, values = sync_na_drop(df, qualifier_col_name, values, all_na=True)  # Drop NA
-            qualifiers = df[qualifier_col_name].tolist()
+            # qualifiers = [q.replace('\'', '') for q in df[qualifier_col_name].tolist()]
+            qualifiers = [q.replace('\'', '') for q in df[qualifier_col_name].tolist()]
         else:
             qualifiers = None
-        
+            
         binarizer = stse.Binarizer(values=values, boundary=decision_boundary, active_operator=active_operator,
                                    qualifiers=qualifiers)
         return df, binarizer.binarize()
@@ -142,5 +143,8 @@ class Binarize:
             
         if self.__options['duplicates']['run']:
             self.df = self.handle_duplicates()
+            
+        if self.__options['drop_na']:
+            self.df.dropna(subset=[self.binarized_col_name], inplace=True)
         
         return self.df

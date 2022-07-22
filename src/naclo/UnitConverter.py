@@ -1,3 +1,4 @@
+from logging import warning
 from math import log10
 import pandas as pd
 import numpy as np
@@ -57,7 +58,13 @@ class UnitConverter:
         Returns:
             float: Computed value.
         """
-        return -1*log10(val)
+        if val < 0:
+            warning(f'Negative value {val} passed to UnitConverter.__neg_log().')
+            return np.nan
+        elif val == 0:
+            return 0
+        else:
+            return -1*log10(val)
     
     @staticmethod
     def standardize_units(df, unit_col_name) -> pd.DataFrame:

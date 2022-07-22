@@ -208,9 +208,11 @@ class TestBinarize(unittest.TestCase):
                 'run': True,
                 'qualifier_col': 'qualifiers'
             },
-            'active_operator': '<='
+            'active_operator': '<=',
+            'drop_na': False
         }
 
+        # Drop NA = False
         binarize = Binarize(self.test_df, params=self.default_params, options=options)
         out = binarize.main()
         
@@ -218,37 +220,49 @@ class TestBinarize(unittest.TestCase):
             out['smiles'].tolist(),
             ['CCC', 'C', 'CN=C=O']
         )
-        
         self.assertEqual(
             out['target'].tolist(),
             [55, 4, 7]
         )
-        
         self.assertEqual(
             out['units'].tolist(),
             ['ug•ml-1', 'mg/l', 'unrecognized']
         )
-        
         self.assertEqual(
             out['qualifiers'].tolist(),
             ['>', '<', '=']
         )
-        
         self.assertTrue(
             np.allclose(
                 out['molar_target'].tolist(),
-                [0.001248, 0.00150, np.nan],
-                atol=1e-2,
+                [0.001248224110253472, 0.0002495118903683718, np.nan],
                 equal_nan=True
             )
         )
-        
         self.assertTrue(
             np.allclose(
                 out['binarized_target'].tolist(),
                 [np.nan, 1, np.nan],
                 equal_nan=True
             )
+        )
+        
+        # Drop NA = True
+        options['drop_na'] = True
+        binarize = Binarize(self.test_df, params=self.default_params, options=options)
+        out = binarize.main()
+        
+        expected = pd.DataFrame({
+            'smiles': ['C'],
+            'target': [4],
+            'units': ['mg/l'],
+            'qualifiers': ['<'],
+            'molar_target': [0.0002495118903683718],
+            'binarized_target': [1.0]
+        })
+        
+        self.assertTrue(
+            out.reset_index(drop=True).equals(expected)
         )
 
 
