@@ -11,5 +11,6 @@
         "run": [true, false],
         "qualifier_col": ""
     },
-    "active_operator": [">", "<", ">=", "<="]
+    "active_operator": [">", "<", ">=", "<="],
+    "drop_na": [true, false]
 }

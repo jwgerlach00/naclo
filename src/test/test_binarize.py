@@ -28,7 +28,7 @@ class TestBinarize(unittest.TestCase):
                 55,
                 4,
                 7,
-                100,
+                '100',  # For testing string -> float conversion
                 2000
             ],
             'units': [
@@ -257,12 +257,16 @@ class TestBinarize(unittest.TestCase):
             'target': [4],
             'units': ['mg/l'],
             'qualifiers': ['<'],
-            'molar_target': [0.0002495118903683718],
+            'molar_target': [0.00025],
             'binarized_target': [1.0]
         })
+        out['molar_target'] = out['molar_target'].apply(lambda x: np.round(x, 5))  # Round to 5 decimals
         
         self.assertTrue(
-            out.reset_index(drop=True).equals(expected)
+            np.array_equal(
+                out.to_numpy(),
+                expected.to_numpy()
+            )
         )
 
 

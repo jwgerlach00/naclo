@@ -4,7 +4,6 @@
         "agree_ratio": 0.8
     },
     "convert_units": {
-        "run": false,
         "units_col": "",
         "output_units": "molar"
     },
@@ -12,5 +11,6 @@
         "run": false,
         "qualifier_col": ""
     },
-    "active_operator": "<="
+    "active_operator": "<=",
+    "drop_na": true
 }

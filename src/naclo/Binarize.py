@@ -116,6 +116,8 @@ class Binarize:
             qualifiers = [q.replace('\'', '') for q in df[qualifier_col_name].tolist()]
         else:
             qualifiers = None
+        
+        values = np.array(values, dtype=float)  # Cast any strings to floats
             
         binarizer = stse.Binarizer(values=values, boundary=decision_boundary, active_operator=active_operator,
                                    qualifiers=qualifiers)
