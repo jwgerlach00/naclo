@@ -21,7 +21,7 @@ class Binarize:
         self.__structure_col = params['structure_col']
         self.__structure_type = params['structure_type']
         self.__target_col = params['target_col']  # Set to standard_value col if doing unit conversion
-        self.__decision_boundary = params['decision_boundary']
+        self.__decision_boundary = float(params['decision_boundary'])  # Cast to float for comparison w/ values
         self.binarized_col_name = f'binarized_{self.__target_col}'
         
         # Drop NA structures and targets

@@ -50,7 +50,7 @@ class TestBinarize(unittest.TestCase):
         cls.default_params['structure_col'] = 'smiles'
         cls.default_params['structure_type'] = 'smiles'
         cls.default_params['target_col'] = 'target'
-        cls.default_params['decision_boundary'] =  7  # neg log molar
+        cls.default_params['decision_boundary'] =  '7'  # neg log molar, test string -> float conversion
         
         return super().setUpClass()
     
